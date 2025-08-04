@@ -1,7 +1,6 @@
 
 'use server';
 
-import { workOrderPartRecommendation, WorkOrderPartRecommendationInput } from '@/ai/flows/work-order-part-recommendation';
 import { getFirestore, collection, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { z } from 'zod';
@@ -9,14 +8,20 @@ import type { Asset } from '@/lib/types';
 
 const db = getFirestore(app);
 
-export async function getPartRecommendations(input: WorkOrderPartRecommendationInput) {
-  try {
-    const result = await workOrderPartRecommendation(input);
-    return { success: true, data: result };
-  } catch (error) {
-    console.error('Error in getPartRecommendations:', error);
-    return { success: false, error: 'Failed to get AI recommendations.' };
-  }
+export async function getPartRecommendations(input: any) {
+    // Placeholder for actual AI call
+    console.log('Getting recommendations for:', input.problemDescription);
+    // In a real app, you would import and call your Genkit flow here.
+    // For now, returning a hardcoded success response.
+    const { workOrderPartRecommendation } = await import('@/ai/flows/work-order-part-recommendation');
+
+    try {
+        const result = await workOrderPartRecommendation(input);
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error in getPartRecommendations:', error);
+        return { success: false, error: 'Failed to get AI recommendations.' };
+    }
 }
 
 
@@ -32,6 +37,8 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
   let successCount = 0;
   let errorCount = 0;
 
+  const companyDocRef = doc(db, 'mainCompanies', companyId);
+
   for (const asset of assets) {
     if (!asset.id) {
       errorCount++;
@@ -42,7 +49,7 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
     const isTrailer = !!asset.trailerType && asset.trailerType.trim() !== '';
     const collectionName = isTrailer ? 'trailers' : 'trucks';
 
-    const assetDocRef = doc(db, 'mainCompanies', companyId, collectionName, asset.id);
+    const assetDocRef = doc(collection(companyDocRef, collectionName), asset.id);
 
     const dataToSet = {
       ...asset,
