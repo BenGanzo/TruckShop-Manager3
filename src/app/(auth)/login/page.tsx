@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { TruckIcon } from 'lucide-react';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -30,6 +31,14 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [user, loading] = useAuthState(auth);
+
+  useEffect(() => {
+    if (!loading && user) {
+        router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
+
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,12 +65,12 @@ export default function LoginPage() {
         throw new Error("You are not authorized to access this company.");
       }
 
-      // 4. If all checks pass, redirect to dashboard
+      // 4. If all checks pass, show toast. The useEffect will handle redirection.
       toast({
         title: 'Login Successful',
-        description: 'Welcome back!',
+        description: 'Welcome back! Redirecting...',
       });
-      router.push('/dashboard');
+      // The useEffect hook will now handle the redirection to /dashboard
 
     } catch (error: any) {
        // If any check fails, sign the user out to be safe
@@ -77,6 +86,15 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+  
+  // Render a loading state or nothing while checking auth state
+  if (loading || user) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+          <p>Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <Card className="w-full max-w-sm">
