@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, setDoc, collection, writeBatch } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,13 +39,27 @@ export default function SignupPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Create a document in Firestore for the new company
-      await setDoc(doc(db, 'mainCompanies', user.uid), {
+      // Use a batch write to create the company and the user document atomically
+      const batch = writeBatch(db);
+
+      // 1. Create a document for the new company
+      const companyRef = doc(collection(db, 'mainCompanies'));
+      batch.set(companyRef, {
         companyName: companyName,
         adminUid: user.uid,
-        adminEmail: user.email,
         createdAt: new Date(),
       });
+      
+      // 2. Create the first user (admin) in the users subcollection
+      const userRef = doc(collection(companyRef, 'users'), user.uid);
+      batch.set(userRef, {
+        email: user.email,
+        role: 'admin', // Assign the 'admin' role
+        createdAt: new Date(),
+      });
+      
+      // Commit the batch
+      await batch.commit();
       
       toast({
         title: "Account Created!",
