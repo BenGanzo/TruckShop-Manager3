@@ -111,13 +111,13 @@ export default function PrintWorkOrderPage() {
             </div>
 
              {/* Problem Description */}
-            <div className="mb-8">
+            <div className="mb-6">
                  <h3 className="font-semibold text-lg mb-2">Reported Problem</h3>
                  <p className="text-sm p-4 bg-muted rounded-lg">{workOrder.problem}</p>
             </div>
 
             {/* Parts */}
-            <div className="mb-8">
+            <div className="mb-6">
                 <h3 className="font-semibold text-lg mb-2">Parts Used</h3>
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
@@ -144,7 +144,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Labor */}
-             <div className="mb-8">
+             <div className="mb-6">
                 <h3 className="font-semibold text-lg mb-2">Labor & Services</h3>
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
@@ -171,7 +171,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Totals */}
-            <div className="flex justify-end mb-8">
+            <div className="flex justify-end mb-6">
                 <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Parts Total:</span>
@@ -199,7 +199,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Footer / Signature */}
-            <div className="border-t pt-8 mt-8 text-center text-muted-foreground">
+            <div className="border-t pt-8 mt-6 text-center text-muted-foreground">
                 <p>Thank you for your business!</p>
                 <div className="flex justify-around mt-16">
                     <div className="w-1/3 pt-2 border-t">
