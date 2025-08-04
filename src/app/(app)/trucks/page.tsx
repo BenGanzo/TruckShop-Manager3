@@ -50,6 +50,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { assignTrucksToOwner } from '@/app/actions';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 
 // Helper function to derive companyId from email
@@ -77,14 +78,26 @@ export default function TrucksPage() {
 
   const [selectedTrucks, setSelectedTrucks] = useState<Set<string>>(new Set());
   const [selectedOwner, setSelectedOwner] = useState<string>('');
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
 
   const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
-  const owners = ownersSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
-  const activeTrucks = trucks.filter((truck: any) => truck.isActive);
+  const owners = ownersSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() as { ownerName: string } })) || [];
+  
+  const filteredTrucks = useMemo(() => {
+    if (!selectedGroup) {
+      return trucks; // "All Trucks"
+    }
+    return trucks.filter((truck: any) => truck.ownerId === selectedGroup);
+  }, [trucks, selectedGroup]);
+
+  const activeTrucksCount = useMemo(() => {
+    return trucks.filter((truck: any) => truck.isActive).length;
+  }, [trucks]);
+
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allTruckIds = new Set(trucks.map(t => t.id));
+      const allTruckIds = new Set(filteredTrucks.map(t => t.id));
       setSelectedTrucks(allTruckIds);
     } else {
       setSelectedTrucks(new Set());
@@ -128,6 +141,16 @@ export default function TrucksPage() {
         });
     }
   };
+  
+  const GroupButton = ({ id, name, icon, count, selected, onClick }: any) => (
+      <div className={cn("flex items-center justify-between pl-2 pr-1 rounded-md", selected ? 'bg-green-500/20' : 'hover:bg-muted')}>
+          <Button variant="ghost" className={cn("justify-start gap-2 px-0 flex-1 h-9", selected && 'font-semibold')} onClick={onClick}>
+              {icon}
+              <span className="truncate">{name} ({count})</span>
+          </Button>
+      </div>
+  );
+
 
   if (userLoading) {
       return (
@@ -169,26 +192,25 @@ export default function TrucksPage() {
             Groups
           </h2>
           <div className="flex flex-col gap-1">
-            <Button
-              variant="ghost"
-              className="justify-start gap-2 px-2 bg-muted font-semibold"
-            >
-              <ChevronRight className="h-4 w-4" />
-              All Trucks ({trucks.length})
-            </Button>
+             <GroupButton
+                id={null}
+                name="All Trucks"
+                icon={<ChevronRight className="h-4 w-4" />}
+                count={trucks.length}
+                selected={selectedGroup === null}
+                onClick={() => setSelectedGroup(null)}
+            />
             {ownersLoading ? <Skeleton className="h-8 w-full" /> : 
                 owners.map((owner: any) => (
-                    <div key={owner.id} className="flex items-center justify-between pl-2 pr-1 rounded-md hover:bg-muted">
-                        <Button variant="ghost" className="justify-start gap-2 px-0 flex-1">
-                            <Building className="h-4 w-4" />
-                            <span className="truncate">{owner.ownerName} ({trucks.filter((t: any) => t.ownerId === owner.id).length})</span>
-                        </Button>
-                         <div className="flex items-center">
-                            <Button variant="ghost" size="icon" className="h-6 w-6"><Plus className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6"><Pencil className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-6 w-6"><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                        </div>
-                    </div>
+                   <GroupButton
+                      key={owner.id}
+                      id={owner.id}
+                      name={owner.ownerName}
+                      icon={<Building className="h-4 w-4" />}
+                      count={trucks.filter((t: any) => t.ownerId === owner.id).length}
+                      selected={selectedGroup === owner.id}
+                      onClick={() => setSelectedGroup(owner.id)}
+                   />
                 ))
             }
           </div>
@@ -205,7 +227,7 @@ export default function TrucksPage() {
                   </CardDescription>
                 </div>
                 <div className="mt-2 text-sm font-medium text-right md:mt-0">
-                  Active count: {activeTrucks.length}
+                  Active count: {activeTrucksCount}
                 </div>
               </div>
               <div className="relative mt-4">
@@ -220,14 +242,14 @@ export default function TrucksPage() {
                <div className="p-4 border-t border-b bg-muted/50 flex items-center gap-4">
                   <Button variant="outline" size="sm" onClick={() => setSelectedTrucks(new Set())} disabled={selectedTrucks.size === 0}>
                     <XCircle className="mr-2"/>
-                    Clear all ({selectedTrucks.size})
+                    Clear selection ({selectedTrucks.size})
                   </Button>
                   <Button variant="outline" size="sm" disabled>
                     <Trash2 className="mr-2"/>
                     Delete selected
                   </Button>
                   <div className="flex items-center gap-2 ml-auto">
-                    <Label>Copy selected to:</Label>
+                    <Label>Assign to owner:</Label>
                     <Select value={selectedOwner} onValueChange={setSelectedOwner}>
                       <SelectTrigger className="w-[180px] h-9">
                         <SelectValue placeholder="Select Owner" />
@@ -240,7 +262,7 @@ export default function TrucksPage() {
                     </Select>
                     <Button size="sm" onClick={handleAssign} disabled={selectedTrucks.size === 0 || !selectedOwner}>
                         <Copy className="mr-2"/>
-                        Copy
+                        Assign
                     </Button>
                   </div>
                </div>
@@ -251,7 +273,7 @@ export default function TrucksPage() {
                       <TableHead className="w-12">
                          <Checkbox 
                             onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
-                            checked={selectedTrucks.size === trucks.length && trucks.length > 0}
+                            checked={selectedTrucks.size === filteredTrucks.length && filteredTrucks.length > 0}
                             aria-label="Select all"
                          />
                       </TableHead>
@@ -275,14 +297,14 @@ export default function TrucksPage() {
                           Error loading trucks: {error.message}
                         </TableCell>
                       </TableRow>
-                    ) : trucks.length === 0 ? (
+                    ) : filteredTrucks.length === 0 ? (
                        <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                          No trucks found. Add your first truck to get started.
+                          {selectedGroup ? 'No trucks found in this group.' : 'No trucks found. Add your first truck to get started.'}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      trucks.map((truck: any) => (
+                      filteredTrucks.map((truck: any) => (
                         <TableRow key={truck.id} data-state={selectedTrucks.has(truck.id) && "selected"}>
                           <TableCell>
                             <Checkbox 
@@ -319,3 +341,5 @@ export default function TrucksPage() {
     </div>
   );
 }
+
+    
