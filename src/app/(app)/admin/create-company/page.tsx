@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, doc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,6 +61,20 @@ export default function CreateCompanyPage() {
       return;
     }
 
+    // Check if companyId already exists
+    const companyDocRef = doc(db, 'mainCompanies', companyId);
+    const companyDocSnap = await getDoc(companyDocRef);
+    if (companyDocSnap.exists()) {
+       toast({
+        variant: 'destructive',
+        title: 'Company ID Exists',
+        description: 'This company ID is already taken. Please choose a different company name.',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+
     try {
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -69,9 +83,7 @@ export default function CreateCompanyPage() {
       // Use a batch write to create the company and the user document atomically
       const batch = writeBatch(db);
 
-      // 1. Create a document for the new company in the `mainCompanies` collection.
-      // We use doc(collection(...)) to generate a new unique ID for the company document.
-      const companyDocRef = doc(collection(db, 'mainCompanies'));
+      // 1. Create the company document in the `mainCompanies` collection with the generated companyId.
       batch.set(companyDocRef, {
         companyId: companyId, // The user-friendly, readable ID
         companyName: companyName,

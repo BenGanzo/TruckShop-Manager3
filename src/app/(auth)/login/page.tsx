@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { getFirestore, collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -40,20 +40,19 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Verify the company ID by finding the company document
-      const companyQuery = query(collection(db, 'mainCompanies'), where('companyId', '==', companyId.toLowerCase()));
-      const companySnapshot = await getDocs(companyQuery);
+      // 2. Verify the company ID by checking if the document exists
+      const companyDocRef = doc(db, 'mainCompanies', companyId.toLowerCase());
+      const companyDocSnap = await getDoc(companyDocRef);
 
-      if (companySnapshot.empty) {
+      if (!companyDocSnap.exists()) {
         throw new Error("Invalid Company ID.");
       }
       
       // 3. Verify the user is part of that company's `users` subcollection
-      const companyDoc = companySnapshot.docs[0];
-      const userDocRef = doc(db, 'mainCompanies', companyDoc.id, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const userDocRef = doc(db, 'mainCompanies', companyDocSnap.id, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
 
-      if (!userDoc.exists()) {
+      if (!userDocSnap.exists()) {
         throw new Error("You are not authorized to access this company.");
       }
 
