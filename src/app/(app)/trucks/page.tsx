@@ -23,6 +23,7 @@ import {
   Search,
   Truck,
 } from 'lucide-react';
+import Link from 'next/link';
 
 const trucks = [
   {
@@ -154,9 +155,11 @@ export default function TrucksPage() {
         <h1 className="text-3xl font-bold tracking-tight font-headline">
           Trucks
         </h1>
-        <Button>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Add Truck
+        <Button asChild>
+          <Link href="/trucks/new">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Truck
+          </Link>
         </Button>
       </div>
 
