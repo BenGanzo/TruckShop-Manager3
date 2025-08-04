@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useCollection } from 'react-firebase-hooks/firestore';
@@ -26,11 +27,11 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 
-export default function AdminOwnersPage() {
+export default function AdminCompaniesPage() {
   const db = getFirestore(app);
-  const [ownersSnapshot, loading, error] = useCollection(collection(db, 'mainCompanies'));
+  const [companiesSnapshot, loading, error] = useCollection(collection(db, 'mainCompanies'));
 
-  const owners = ownersSnapshot?.docs.map(doc => {
+  const companies = companiesSnapshot?.docs.map(doc => {
     const data = doc.data();
     // Convert Firestore Timestamp to JavaScript Date
     const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : null;
@@ -50,21 +51,21 @@ export default function AdminOwnersPage() {
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight font-headline">Owners</h1>
-          <p className="mt-2 text-muted-foreground">Manage all company/owner accounts.</p>
+          <h1 className="text-3xl font-bold tracking-tight font-headline">Companies</h1>
+          <p className="mt-2 text-muted-foreground">Manage all company accounts using the software.</p>
         </div>
         <Button asChild>
           <Link href="/admin/create-company">
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add Owner
+            Add Company
           </Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>All Owners</CardTitle>
-          <CardDescription>A list of all registered owner accounts.</CardDescription>
+          <CardTitle>All Companies</CardTitle>
+          <CardDescription>A list of all registered company accounts.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           <div className="rounded-md border-t">
@@ -94,28 +95,28 @@ export default function AdminOwnersPage() {
                 ) : error ? (
                    <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center text-destructive">
-                      Error loading owners: {error.message}
+                      Error loading companies: {error.message}
                     </TableCell>
                   </TableRow>
-                ) : owners.length === 0 ? (
+                ) : companies.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
-                      No owners found. Add one to get started.
+                      No companies found. Add one to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  owners.map((owner) => (
-                    <TableRow key={owner.id}>
-                      <TableCell className="font-medium">{owner.companyName || 'N/A'}</TableCell>
-                      <TableCell className="font-mono text-xs">{owner.companyId || 'N/A'}</TableCell>
-                      <TableCell>{owner.contactName || 'N/A'}</TableCell>
-                      <TableCell>{owner.phone1 || 'N/A'}</TableCell>
-                      <TableCell>{formatDate(owner.createdAt)}</TableCell>
+                  companies.map((company) => (
+                    <TableRow key={company.id}>
+                      <TableCell className="font-medium">{company.companyName || 'N/A'}</TableCell>
+                      <TableCell className="font-mono text-xs">{company.companyId || 'N/A'}</TableCell>
+                      <TableCell>{company.contactName || 'N/A'}</TableCell>
+                      <TableCell>{company.phone1 || 'N/A'}</TableCell>
+                      <TableCell>{formatDate(company.createdAt)}</TableCell>
                       <TableCell>
                         <Button asChild variant="ghost" size="icon">
-                           <Link href={`/admin/owners/${owner.id}`}>
+                           <Link href={`/admin/companies/${company.id}`}>
                             <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Edit Owner</span>
+                            <span className="sr-only">Edit Company</span>
                           </Link>
                         </Button>
                       </TableCell>

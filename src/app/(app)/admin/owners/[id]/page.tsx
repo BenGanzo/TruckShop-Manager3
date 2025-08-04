@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -67,7 +68,7 @@ export default function EditCompanyPage() {
           title: 'Not Found',
           description: 'Company data could not be found.',
         });
-        router.push('/admin/owners');
+        router.push('/admin/companies');
       }
       setIsFetching(false);
     };
@@ -97,7 +98,7 @@ export default function EditCompanyPage() {
         title: 'Company Updated!',
         description: 'The company details have been saved successfully.',
       });
-      router.push('/admin/owners');
+      router.push('/admin/companies');
     } else {
       toast({
         variant: 'destructive',
@@ -133,9 +134,9 @@ export default function EditCompanyPage() {
         <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
                  <Button variant="outline" size="icon" asChild>
-                    <Link href="/admin/owners">
+                    <Link href="/admin/companies">
                         <ArrowLeft className="h-4 w-4" />
-                        <span className="sr-only">Back to Owners</span>
+                        <span className="sr-only">Back to Companies</span>
                     </Link>
                 </Button>
                 <h1 className="text-3xl font-bold tracking-tight font-headline">

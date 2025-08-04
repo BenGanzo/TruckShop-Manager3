@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -194,10 +195,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={isActive('/admin/owners')} tooltip="Owners">
-                <Link href="/admin/owners">
+              <SidebarMenuButton asChild isActive={isActive('/admin/companies')} tooltip="Companies">
+                <Link href="/admin/companies">
                   <Building />
-                  <span>Owners</span>
+                  <span>Companies</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
