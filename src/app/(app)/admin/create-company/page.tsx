@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, collection, writeBatch, serverTimestamp, getDoc } from 'firebase/firestore';
@@ -18,15 +18,16 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { TruckIcon } from 'lucide-react';
+import { Building, Terminal, UserPlus } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
 
 // Helper to generate a URL-friendly slug from a string
 const generateCompanyId = (name: string) => {
+  if (!name) return '';
   return name
     .toLowerCase()
     .replace(/\s+/g, '-') // Replace spaces with -
@@ -40,17 +41,32 @@ const generateCompanyId = (name: string) => {
 export default function CreateCompanyPage() {
   const router = useRouter();
   const { toast } = useToast();
+  
+  // State for form fields
   const [companyName, setCompanyName] = useState('');
+  const [website, setWebsite] = useState('');
+  const [contactFirstName, setContactFirstName] = useState('');
+  const [contactLastName, setContactLastName] = useState('');
+  const [address, setAddress] = useState('');
+  const [zip, setZip] = useState('');
+  const [state, setState] = useState('');
+  const [city, setCity] = useState('');
+  const [phone1, setPhone1] = useState('');
+  
+  // Admin credentials state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  
+  // Control state
   const [isLoading, setIsLoading] = useState(false);
   const [generatedCompanyId, setGeneratedCompanyId] = useState('');
+
+  const companyId = useMemo(() => generateCompanyId(companyName), [companyName]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
-    const companyId = generateCompanyId(companyName);
     if (!companyId) {
       toast({
         variant: 'destructive',
@@ -74,32 +90,38 @@ export default function CreateCompanyPage() {
       return;
     }
 
-
     try {
       // Create user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Use a batch write to create the company and the user document atomically
       const batch = writeBatch(db);
 
-      // 1. Create the company document in the `mainCompanies` collection with the generated companyId.
+      // 1. Create the company document with all the new details
       batch.set(companyDocRef, {
-        companyId: companyId, // The user-friendly, readable ID
+        companyId: companyId,
         companyName: companyName,
+        website: website,
+        contactName: `${contactFirstName} ${contactLastName}`.trim(),
+        address: address,
+        zip: zip,
+        state: state,
+        city: city,
+        phone1: phone1,
         adminUid: user.uid,
         createdAt: serverTimestamp(),
       });
       
-      // 2. Create the first user (admin) in the `users` subcollection of the new company.
+      // 2. Create the first user (admin) in the `users` subcollection
       const userDocRef = doc(collection(companyDocRef, 'users'), user.uid);
       batch.set(userDocRef, {
         email: user.email,
-        role: 'admin', // Assign the 'admin' role
+        role: 'admin',
+        firstName: contactFirstName,
+        lastName: contactLastName,
         createdAt: serverTimestamp(),
       });
       
-      // Commit the batch
       await batch.commit();
 
       setGeneratedCompanyId(companyId);
@@ -120,9 +142,16 @@ export default function CreateCompanyPage() {
     }
   };
   
-  // Resets the form to allow creating another company
   const handleCreateAnother = () => {
     setCompanyName('');
+    setWebsite('');
+    setContactFirstName('');
+    setContactLastName('');
+    setAddress('');
+    setZip('');
+    setState('');
+    setCity('');
+    setPhone1('');
     setEmail('');
     setPassword('');
     setGeneratedCompanyId('');
@@ -131,15 +160,15 @@ export default function CreateCompanyPage() {
 
   if (generatedCompanyId) {
     return (
-       <Card className="w-full max-w-sm">
+       <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
             <div className="mb-4 flex justify-center">
-                <TruckIcon className="w-10 h-10 text-primary" />
+                <Building className="w-10 h-10 text-primary" />
             </div>
             <CardTitle className="text-2xl font-headline">Company Created!</CardTitle>
             <CardDescription>
                 Provide the new administrator with the Company ID and their credentials.
-            </CardDescription>
+            </D>
         </CardHeader>
         <CardContent>
             <Alert>
@@ -164,49 +193,82 @@ export default function CreateCompanyPage() {
 
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader className="text-center">
-         <div className="mb-4 flex justify-center">
-            <TruckIcon className="w-10 h-10 text-primary" />
+    <Card className="w-full max-w-2xl">
+      <CardHeader>
+        <div className="flex items-center gap-4">
+             <Building className="w-8 h-8 text-primary flex-shrink-0" />
+            <div>
+                <CardTitle className="text-2xl font-headline">Create a New Company</CardTitle>
+                <CardDescription>
+                  Enter the new company's details and create their first admin account. The Company ID will be generated automatically.
+                </CardDescription>
+            </div>
         </div>
-        <CardTitle className="text-2xl font-headline">Create a New Company</CardTitle>
-        <CardDescription>
-          Enter the new company's details and create their first admin account.
-        </CardDescription>
       </CardHeader>
       <form onSubmit={handleSignUp}>
-        <CardContent className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="company-name">Company Name</Label>
-            <Input 
-              id="company-name" 
-              placeholder="e.g., Angulo Transportation" 
-              required 
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="email">Admin's Email</Label>
-            <Input 
-              id="email" 
-              type="email" 
-              placeholder="admin@theircompany.com" 
-              required 
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="password">Temporary Password</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              required 
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+        <CardContent className="space-y-6">
+            <div>
+                <Label className="text-lg font-semibold">Company Information</Label>
+                <Separator className="mt-2 mb-4"/>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="company-name">Company Name</Label>
+                        <Input id="company-name" placeholder="e.g., Angulo Transportation Services, LLC" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                         {companyId && (
+                            <p className="text-sm text-muted-foreground">Generated ID: <span className="font-mono bg-muted px-2 py-1 rounded">{companyId}</span></p>
+                        )}
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="contact-first-name">Contact First Name</Label>
+                        <Input id="contact-first-name" required value={contactFirstName} onChange={(e) => setContactFirstName(e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="contact-last-name">Contact Last Name</Label>
+                        <Input id="contact-last-name" required value={contactLastName} onChange={(e) => setContactLastName(e.target.value)} />
+                    </div>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="address">Address</Label>
+                        <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="city">City</Label>
+                        <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                         <div className="space-y-2">
+                            <Label htmlFor="state">State</Label>
+                            <Input id="state" value={state} onChange={(e) => setState(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="zip">Zip Code</Label>
+                            <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} />
+                        </div>
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="phone1">Primary Phone</Label>
+                        <Input id="phone1" type="tel" value={phone1} onChange={(e) => setPhone1(e.target.value)} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="website">Website</Label>
+                        <Input id="website" placeholder="https://example.com" value={website} onChange={(e) => setWebsite(e.target.value)} />
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                 <Label className="text-lg font-semibold flex items-center gap-2"><UserPlus/> Admin Account</Label>
+                <Separator className="mt-2 mb-4"/>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="email">Admin's Email</Label>
+                        <Input id="email" type="email" placeholder="admin@theircompany.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="password">Temporary Password</Label>
+                        <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                    </div>
+                </div>
+            </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button className="w-full" type="submit" disabled={isLoading}>
