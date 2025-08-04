@@ -23,16 +23,16 @@ export default function AppLayout({
 
   useEffect(() => {
     if (!loading && !user) {
-      if (pathname !== '/login' && pathname !== '/signup') {
-        router.push('/login');
-      }
+      router.push('/login');
     }
-  }, [user, loading, router, pathname]);
+  }, [user, loading, router]);
 
   if (loading || !user) {
+    // Don't show skeleton for auth pages, just the page content
     if (pathname === '/login' || pathname === '/signup') {
        return <>{children}</>;
     }
+    // Show a loading skeleton for protected app pages
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="w-full max-w-sm space-y-4">
@@ -44,15 +44,16 @@ export default function AppLayout({
     );
   }
 
-  // Prevent flicker of auth pages when authenticated
+  // If user is authenticated, but trying to access login/signup, redirect to dashboard
   if (pathname === '/login' || pathname === '/signup') {
-    return null;
+    router.replace('/dashboard');
+    return null; // Return null to prevent flicker
   }
 
   return (
     <SidebarProvider>
       <Sidebar>
-        <AppSidebar />
+        <AppSidebar user={user} />
       </Sidebar>
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>

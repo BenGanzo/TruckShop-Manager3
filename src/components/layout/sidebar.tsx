@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { User } from 'firebase/auth';
 import {
   LayoutGrid,
   Wrench,
@@ -11,7 +12,7 @@ import {
   ShoppingCart,
   Users,
   DollarSign,
-  User,
+  User as UserIcon,
   Building,
   Upload,
   UserCircle,
@@ -47,8 +48,11 @@ const RectangleHorizontal = () => (
   </svg>
 );
 
+interface AppSidebarProps {
+  user: User | null;
+}
 
-export function AppSidebar() {
+export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
@@ -182,7 +186,7 @@ export function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive('/admin/users')} tooltip="Users">
                 <Link href="/admin/users">
-                  <User />
+                  <UserIcon />
                   <span>Users</span>
                 </Link>
               </SidebarMenuButton>
@@ -212,8 +216,8 @@ export function AppSidebar() {
           <div className="flex items-center gap-3">
             <UserCircle className="w-10 h-10 text-sidebar-foreground" />
             <div className="overflow-hidden">
-              <p className="font-semibold truncate">Admin User</p>
-              <p className="text-xs text-sidebar-foreground/70 truncate">admin@truckshop.com</p>
+              <p className="font-semibold truncate">{user?.displayName || 'Admin User'}</p>
+              <p className="text-xs text-sidebar-foreground/70 truncate">{user?.email}</p>
             </div>
           </div>
         </div>
