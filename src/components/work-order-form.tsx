@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { getPartRecommendations } from '@/app/actions';
@@ -10,20 +11,22 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Wrench, Cog, List } from 'lucide-react';
+import { Sparkles, Wrench, Cog, List, Info } from 'lucide-react';
 import type { WorkOrderPartRecommendationOutput } from '@/ai/flows/work-order-part-recommendation';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
-  problemDescription: z.string().min(10, {
-    message: 'Problem description must be at least 10 characters.',
+  problemDescription: z.string().min(1, {
+    message: 'Problem description is required to get recommendations.',
   }),
 });
 
@@ -39,6 +42,11 @@ export default function WorkOrderForm() {
     },
   });
 
+  const problemDescription = useWatch({
+    control: form.control,
+    name: 'problemDescription',
+  });
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setRecommendations(null);
@@ -47,6 +55,10 @@ export default function WorkOrderForm() {
 
     if (result.success && result.data) {
       setRecommendations(result.data);
+       toast({
+        title: 'Recommendations Ready!',
+        description: 'AI suggestions have been generated below.',
+      });
     } else {
       toast({
         variant: 'destructive',
@@ -63,82 +75,83 @@ export default function WorkOrderForm() {
           <Sparkles className="text-primary" />
           AI-Powered Recommendations
         </CardTitle>
+        <CardDescription>
+          Get smart suggestions for parts and labor based on the problem description.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
               control={form.control}
               name="problemDescription"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Problem Description</FormLabel>
                   <FormControl>
+                     {/* The label is provided by the main WO form, so we hide it here */}
                     <Textarea
                       placeholder="e.g., 'Truck is making a grinding noise when braking and pulling to the left.'"
-                      className="resize-none"
+                      className="resize-none sr-only" 
                       {...field}
-                      rows={4}
+                      rows={3}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  Getting Recommendations...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Get Recommendations
-                </>
-              )}
-            </Button>
+            
+            {!problemDescription && (
+                 <div className="text-center text-sm text-muted-foreground p-8 bg-muted rounded-lg">
+                    Fill in vehicle and problem to get suggestions.
+                </div>
+            )}
+            
+            <div className="flex justify-center">
+                 <Button type="submit" disabled={isLoading || !problemDescription} variant="outline">
+                  {isLoading ? (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                      Getting Suggestions...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="mr-2 h-4 w-4" />
+                      Get AI Suggestions
+                    </>
+                  )}
+                </Button>
+            </div>
           </form>
         </Form>
         
         {recommendations && (
-          <div className="mt-8 grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Cog />
-                  Recommended Parts
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                 <ul className="space-y-2">
-                    {recommendations.recommendedParts.map((part, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <List className="h-5 w-5 mt-0.5 text-muted-foreground flex-shrink-0" />
-                        <span>{part}</span>
-                      </li>
-                    ))}
-                  </ul>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <Wrench />
-                  Recommended Labor
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                 <ul className="space-y-2">
-                    {recommendations.recommendedLabor.map((labor, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <List className="h-5 w-5 mt-0.5 text-muted-foreground flex-shrink-0" />
-                        <span>{labor}</span>
-                      </li>
-                    ))}
-                  </ul>
-              </CardContent>
-            </Card>
+           <div className="mt-6 space-y-4">
+             <Alert>
+              <Info className="h-4 w-4" />
+              <AlertTitle>Heads up!</AlertTitle>
+              <AlertDescription>
+                These are AI-generated suggestions. Review them carefully and add the required items to the work order below.
+              </AlertDescription>
+            </Alert>
+            <div className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-2">
+                    <h3 className="font-semibold flex items-center gap-2"><Cog /> Recommended Parts</h3>
+                    <ul className="space-y-2 list-disc pl-5 text-sm">
+                        {recommendations.recommendedParts.map((part, index) => (
+                        <li key={index}>{part}</li>
+                        ))}
+                    </ul>
+                </div>
+                <div className="space-y-2">
+                    <h3 className="font-semibold flex items-center gap-2"><Wrench /> Recommended Labor</h3>
+                     <ul className="space-y-2 list-disc pl-5 text-sm">
+                        {recommendations.recommendedLabor.map((labor, index) => (
+                        <li key={index}>{labor}</li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
           </div>
         )}
       </CardContent>

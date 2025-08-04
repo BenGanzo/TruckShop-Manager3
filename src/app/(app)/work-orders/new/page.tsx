@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ import { ArrowLeft, CalendarIcon, Lock } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import WorkOrderForm from '@/components/work-order-form';
+import WorkOrderPartsLaborForm from '@/components/work-order-parts-labor-form';
 
 export default function CreateWorkOrderPage() {
   const [arrivalDate, setArrivalDate] = React.useState<Date | undefined>();
@@ -209,6 +211,7 @@ export default function CreateWorkOrderPage() {
           </Card>
           
           <WorkOrderForm />
+          <WorkOrderPartsLaborForm />
 
         </div>
 
