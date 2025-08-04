@@ -99,7 +99,7 @@ export default function LoginPage() {
               placeholder="e.g., angulo-transportation" 
               required 
               value={companyId}
-              onChange={(e) => setCompanyId(e.target.value)}
+              onChange={(e) => setCompanyId(e.target.value.toLowerCase())}
               autoCapitalize="none"
             />
           </div>
