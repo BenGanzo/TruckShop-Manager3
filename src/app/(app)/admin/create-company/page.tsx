@@ -77,7 +77,6 @@ export default function CreateCompanyPage() {
       return;
     }
 
-    // Check if companyId already exists
     const companyDocRef = doc(db, 'mainCompanies', companyId);
     const companyDocSnap = await getDoc(companyDocRef);
     if (companyDocSnap.exists()) {
@@ -102,7 +101,6 @@ export default function CreateCompanyPage() {
         adminUid = user.uid;
         userEmail = user.email;
 
-        // Create the user document in the `users` subcollection
         const userDocRef = doc(collection(companyDocRef, 'users'), adminUid);
         batch.set(userDocRef, {
           email: userEmail,
@@ -113,7 +111,7 @@ export default function CreateCompanyPage() {
         });
       }
       
-      // Create the company document
+      // Create the company document regardless
       const companyData: any = {
         companyId: companyId,
         companyName: companyName,
