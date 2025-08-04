@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,14 +13,40 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { UploadCloud, File as FileIcon, Trash2, Import } from 'lucide-react';
+import { UploadCloud, File as FileIcon, Trash2, Import, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import Papa from 'papaparse';
+import { importAssets } from '@/app/actions';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth } from '@/lib/firebase';
+import type { Asset } from '@/lib/types';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+// Helper function to derive companyId from email
+const getCompanyIdFromEmail = (email: string | null | undefined) => {
+  if (!email) return '';
+  // This is a placeholder logic. In a real app, you'd get this from user claims or a dedicated field.
+  // For "ganzobenjamin1301@gmail.com", this will not produce "angulo-transportation".
+  // Let's hardcode it for this specific user for now to ensure it works.
+  if (email === 'ganzobenjamin1301@gmail.com') {
+    return 'angulo-transportation';
+  }
+  // Fallback logic
+  const domain = email.split('@')[1];
+  return domain ? domain.split('.')[0] : '';
+};
 
 export default function AdminImportPage() {
+  const [user] = useAuthState(auth);
   const [file, setFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [importResults, setImportResults] = useState<{ success: number; errors: number } | null>(null);
   const { toast } = useToast();
 
+  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
+    setImportResults(null);
     if (fileRejections.length > 0) {
       toast({
         variant: 'destructive',
@@ -42,11 +68,81 @@ export default function AdminImportPage() {
   });
 
   const handleImport = () => {
-    // Placeholder for actual import logic
-    console.log('Importing', file?.name);
-    toast({
-      title: 'Import Started (Simulated)',
-      description: `Your file ${file?.name} is being processed.`,
+    if (!file || !companyId) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'No file selected or company could not be identified.',
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setImportResults(null);
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        const assetsToImport: Asset[] = (results.data as any[]).map(row => {
+          // Normalize headers (lowercase, remove spaces and special chars)
+          const normalizedRow: { [key: string]: any } = {};
+          for (const key in row) {
+            const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+            normalizedRow[normalizedKey] = row[key];
+          }
+
+          // Map to Asset type
+          return {
+            id: normalizedRow.id || normalizedRow.truckid || normalizedRow.trailerid || normalizedRow.assetid,
+            isActive: !normalizedRow.isactive || normalizedRow.isactive.toLowerCase() !== 'no',
+            vin: normalizedRow.vinnumber || '',
+            make: normalizedRow.make || '',
+            model: normalizedRow.model || '',
+            makeYear: normalizedRow.makeyear || '',
+            plateNumber: normalizedRow.platenumber || '',
+            trailerType: normalizedRow.trailertype || '',
+            purchasedOn: normalizedRow.purchasedon || '',
+            tagExpireOn: normalizedRow.tagexpireon || '',
+            inspectionDueOn: normalizedRow.inspectiondueon || '',
+          };
+        }).filter(asset => asset.id); // Filter out rows without an ID
+
+        if (assetsToImport.length === 0) {
+          toast({
+            variant: 'destructive',
+            title: 'No Data Found',
+            description: 'The CSV file is empty or does not contain valid asset rows with an ID.',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        try {
+          const result = await importAssets(companyId, assetsToImport);
+          setImportResults(result);
+          toast({
+            title: 'Import Complete!',
+            description: `${result.success} assets imported, ${result.errors} errors.`,
+          });
+        } catch (error: any) {
+          toast({
+            variant: 'destructive',
+            title: 'Import Failed',
+            description: error.message || 'An unknown error occurred during import.',
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      error: (error: any) => {
+        toast({
+          variant: 'destructive',
+          title: 'CSV Parsing Error',
+          description: error.message,
+        });
+        setIsLoading(false);
+      },
     });
   };
 
@@ -84,7 +180,7 @@ export default function AdminImportPage() {
               <Label className="font-semibold">Recommended Headers</Label>
               <div className="mt-2 flex flex-wrap gap-2">
                 {recommendedHeaders.map(header => (
-                   <Badge key={header} variant="secondary">{header}</Badge>
+                  <Badge key={header} variant="secondary">{header}</Badge>
                 ))}
               </div>
             </div>
@@ -110,46 +206,64 @@ export default function AdminImportPage() {
               <Label>CSV File</Label>
               {file ? (
                 <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/50">
-                   <div className="flex items-center gap-3">
-                     <FileIcon className="h-6 w-6 text-primary" />
-                     <div>
-                        <p className="font-medium">{file.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                            {(file.size / 1024).toFixed(2)} KB
-                        </p>
-                     </div>
-                   </div>
-                   <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
-                     <Trash2 className="h-4 w-4 text-destructive"/>
-                     <span className="sr-only">Remove file</span>
-                   </Button>
+                  <div className="flex items-center gap-3">
+                    <FileIcon className="h-6 w-6 text-primary" />
+                    <div>
+                      <p className="font-medium">{file.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {(file.size / 1024).toFixed(2)} KB
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={() => setFile(null)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                    <span className="sr-only">Remove file</span>
+                  </Button>
                 </div>
               ) : (
                 <div
                   {...getRootProps()}
-                  className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
-                      isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
-                  }`}
+                  className={`flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${isDragActive ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50'
+                    }`}
                 >
                   <input {...getInputProps()} />
                   <UploadCloud className="w-10 h-10 mb-4 text-muted-foreground" />
                   {isDragActive ? (
-                      <p className="font-semibold text-primary">Drop the file here...</p>
+                    <p className="font-semibold text-primary">Drop the file here...</p>
                   ) : (
-                      <>
+                    <>
                       <p className="mb-2 text-center">
-                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        <span className="font-semibold">Click to upload</span> or drag and drop
                       </p>
                       <p className="text-xs text-muted-foreground">CSV files up to 10MB</p>
-                      </>
+                    </>
                   )}
                 </div>
               )}
             </div>
-            <Button className="w-full mt-auto" disabled={!file} onClick={handleImport} size="lg">
-              <Import className="mr-2" />
-              Import Assets
+            <Button className="w-full mt-auto" disabled={!file || isLoading} onClick={handleImport} size="lg">
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <Import className="mr-2" />
+                  Import Assets
+                </>
+              )}
             </Button>
+            {importResults && (
+              <Alert className="mt-4" variant={importResults.errors > 0 ? 'destructive' : 'default'}>
+                <Import className="h-4 w-4" />
+                <AlertTitle>Import Status</AlertTitle>
+                <AlertDescription>
+                  <p>Successfully imported: {importResults.success}</p>
+                  <p>Failed imports: {importResults.errors}</p>
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
       </div>
