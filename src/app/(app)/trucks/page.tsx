@@ -166,10 +166,10 @@ export default function TrucksPage() {
   };
   
   const GroupButton = ({ id, name, icon, count, selected, onClick }: any) => (
-      <div className={cn("flex items-center justify-between pl-2 pr-1 rounded-md", selected ? 'bg-green-500/20' : 'hover:bg-muted')}>
-          <Button variant="ghost" className={cn("justify-start gap-2 px-0 flex-1 h-9", selected && 'font-semibold')} onClick={onClick}>
-              {icon}
-              <span className="truncate">{name} ({count})</span>
+      <div className={cn("flex items-start justify-between pl-2 pr-1 rounded-md", selected ? 'bg-green-500/20' : 'hover:bg-muted')}>
+          <Button variant="ghost" className={cn("justify-start items-start gap-2 px-0 flex-1 h-auto min-h-9 py-1.5", selected && 'font-semibold')} onClick={onClick}>
+              <span className="mt-0.5">{icon}</span>
+              <span className="flex-1 text-left">{name} ({count})</span>
           </Button>
       </div>
   );
