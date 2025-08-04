@@ -22,7 +22,24 @@ import Link from 'next/link';
 
 export default function WorkOrdersPage() {
   // Placeholder data - in the future, this will come from Firestore
-  const workOrders: any[] = [];
+  const workOrders: any[] = [
+    {
+      id: 'WO-1024',
+      vehicle: 'T-106',
+      status: 'Completed',
+      assignedTo: 'Benjamin G.',
+      createdDate: '2024-08-15',
+      total: 457.89,
+    },
+     {
+      id: 'WO-1025',
+      vehicle: 'T-102',
+      status: 'In Progress',
+      assignedTo: 'John D.',
+      createdDate: '2024-08-18',
+      total: 150.00,
+    }
+  ];
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
@@ -69,10 +86,20 @@ export default function WorkOrdersPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    // This part will be used when we have data
-                    <TableRow>
-                       <TableCell>WO-1</TableCell>
-                    </TableRow>
+                    workOrders.map((wo) => (
+                      <TableRow key={wo.id}>
+                        <TableCell className="font-medium">
+                           <Button variant="link" asChild className="p-0 h-auto">
+                              <Link href={`/work-orders/${wo.id}`}>{wo.id}</Link>
+                           </Button>
+                        </TableCell>
+                        <TableCell>{wo.vehicle}</TableCell>
+                        <TableCell>{wo.status}</TableCell>
+                        <TableCell>{wo.assignedTo}</TableCell>
+                        <TableCell>{wo.createdDate}</TableCell>
+                        <TableCell>${wo.total.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))
                   )}
                 </TableBody>
               </Table>
