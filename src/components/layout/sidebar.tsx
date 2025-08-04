@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -17,6 +18,7 @@ import {
   Upload,
   UserCircle,
   TruckIcon,
+  Settings,
 } from 'lucide-react';
 
 import {
@@ -56,7 +58,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
 
   const isActive = (path: string) => {
-    return pathname === path;
+    return pathname === path || pathname.startsWith(path + '/');
   };
 
   return (
@@ -183,6 +185,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
+             <SidebarMenuItem>
+               <SidebarMenuButton asChild isActive={isActive('/settings')} tooltip="Settings">
+                <Link href="/settings">
+                  <Settings />
+                  <span>Settings</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive('/admin/users')} tooltip="Users">
                 <Link href="/admin/users">
