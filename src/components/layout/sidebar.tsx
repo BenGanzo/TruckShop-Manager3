@@ -75,7 +75,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       <SidebarContent>
         <SidebarMenu>
           <SidebarGroup>
-            <SidebarGroupLabel>Assets</SidebarGroupLabel>
+            <SidebarGroupLabel>Assets &amp; Operations</SidebarGroupLabel>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
@@ -97,6 +97,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
                 <Link href="/work-orders">
                   <Wrench />
                   <span>Work Orders</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive('/owners')} tooltip="Owners">
+                <Link href="/owners">
+                  <Users />
+                  <span>Owners</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -134,6 +142,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
             </SidebarMenuItem>
           </SidebarGroup>
           <SidebarGroup>
+             <SidebarGroupLabel>Management</SidebarGroupLabel>
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
