@@ -201,6 +201,14 @@ export function AppSidebar({ user }: AppSidebarProps) {
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild isActive={isActive('/settings')} tooltip="Settings">
+                <Link href="/settings">
+                  <Settings />
+                  <span>Settings</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
                <SidebarMenuButton asChild isActive={isActive('/admin/import')} tooltip="Import Data">
                 <Link href="/admin/import">
