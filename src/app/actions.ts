@@ -120,3 +120,27 @@ export async function updateCompany(companyId: string, companyData: any): Promis
         return { success: false, error: 'Failed to update the company in the database.' };
     }
 }
+
+export async function assignTrucksToOwner(companyId: string, truckIds: string[], ownerId: string): Promise<{ success: boolean; error?: string }> {
+    if (!companyId || !truckIds || truckIds.length === 0 || !ownerId) {
+        return { success: false, error: 'Invalid arguments provided for assignment.' };
+    }
+
+    try {
+        const batch = writeBatch(db);
+        const companyRef = doc(db, 'mainCompanies', companyId);
+        const trucksCollectionRef = collection(companyRef, 'trucks');
+
+        truckIds.forEach(truckId => {
+            const truckDocRef = doc(trucksCollectionRef, truckId);
+            batch.update(truckDocRef, { ownerId: ownerId });
+        });
+
+        await batch.commit();
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error assigning trucks to owner:', error);
+        return { success: false, error: 'Failed to update truck assignments in the database.' };
+    }
+}
