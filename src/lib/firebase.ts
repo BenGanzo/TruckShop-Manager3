@@ -5,12 +5,12 @@ import { getFirestore } from "firebase/firestore";
 
 // Your web app's Firebase configuration - THIS IS A PUBLIC CONFIG
 const firebaseConfig = {
-  apiKey: "AIzaSyA5P6Jj--CRE4CdFA9tqiPyPSItzxnsr2o",
-  authDomain: "truck-shop-manager.firebaseapp.com",
-  projectId: "truck-shop-manager",
-  storageBucket: "truck-shop-manager.appspot.com",
-  messagingSenderId: "832217401611",
-  appId: "1:832217401611:web:9fb4d76bdd4d4a3b59ba0e"
+  apiKey: "AIzaSyBe_kCj8a2zozwAZFDcRIRfD4hA4Pj-3pE",
+  authDomain: "truckshop-manager-3a957.firebaseapp.com",
+  projectId: "truckshop-manager-3a957",
+  storageBucket: "truckshop-manager-3a957.appspot.com",
+  messagingSenderId: "1038423233256",
+  appId: "1:1038423233256:web:614b73523c914022a36417"
 };
 
 // Initialize Firebase
