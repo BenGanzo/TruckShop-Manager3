@@ -40,6 +40,7 @@ import {
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Select,
@@ -67,6 +68,7 @@ const getCompanyIdFromEmail = (email: string | null | undefined) => {
 
 export default function TrucksPage() {
   const [user, userLoading] = useAuthState(auth);
+  const router = useRouter();
   const { toast } = useToast();
   const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
   const db = getFirestore(app);
@@ -93,13 +95,16 @@ export default function TrucksPage() {
     
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
-        const idMatch = trucksByGroup.filter((truck: any) => truck.id?.toLowerCase().startsWith(query));
-        if (idMatch.length > 0) {
-            return idMatch;
+        // Prioritize ID matches that start with the query
+        const idStartsWithMatch = trucksByGroup.filter((truck: any) => truck.id?.toLowerCase().startsWith(query));
+        if (idStartsWithMatch.length > 0) {
+            return idStartsWithMatch;
         }
 
+        // Fallback to including any match
         return trucksByGroup.filter((truck: any) => {
             return (
+                truck.id?.toLowerCase().includes(query) ||
                 truck.make?.toLowerCase().includes(query) ||
                 truck.model?.toLowerCase().includes(query) ||
                 truck.vin?.toLowerCase().includes(query)
@@ -161,12 +166,16 @@ export default function TrucksPage() {
         });
     }
   };
+
+  const handleRowDoubleClick = (truckId: string) => {
+    router.push(`/trucks/${truckId}`);
+  };
   
   const GroupButton = ({ id, name, icon, count, selected, onClick }: any) => (
       <div className={cn("flex items-start justify-between pl-2 pr-1 rounded-md", selected ? 'bg-green-500/20' : 'hover:bg-muted')}>
-          <Button variant="ghost" className={cn("justify-start items-start gap-2 px-0 flex-1 h-auto min-h-9 py-1.5", selected && 'font-semibold')} onClick={onClick}>
+          <Button variant="ghost" className={cn("justify-start items-start gap-2 px-0 flex-1 h-auto min-h-9 py-1.5 text-left", selected && 'font-semibold')} onClick={onClick}>
               <span className="mt-0.5">{icon}</span>
-              <span className="flex-1 text-left">{name} ({count})</span>
+              <span className="flex-1">{name} ({count})</span>
           </Button>
       </div>
   );
@@ -304,31 +313,37 @@ export default function TrucksPage() {
                       <TableHead>Model</TableHead>
                       <TableHead>Owner</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead className="w-[50px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {loading ? (
                        <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           Loading trucks...
                         </TableCell>
                       </TableRow>
                     ) : error ? (
                       <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center text-destructive">
+                        <TableCell colSpan={7} className="h-24 text-center text-destructive">
                           Error loading trucks: {error.message}
                         </TableCell>
                       </TableRow>
                     ) : filteredTrucks.length === 0 ? (
                        <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
+                        <TableCell colSpan={7} className="h-24 text-center">
                           {searchQuery ? 'No trucks match your search.' : (selectedGroup ? 'No trucks found in this group.' : 'No trucks found. Add your first truck to get started.')}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredTrucks.map((truck: any) => (
-                        <TableRow key={truck.id} data-state={selectedTrucks.has(truck.id) && "selected"}>
-                          <TableCell>
+                        <TableRow 
+                            key={truck.id} 
+                            data-state={selectedTrucks.has(truck.id) && "selected"}
+                            onDoubleClick={() => handleRowDoubleClick(truck.id)}
+                            className="cursor-pointer"
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox 
                                 onCheckedChange={(checked) => handleSelectTruck(truck.id, Boolean(checked))}
                                 checked={selectedTrucks.has(truck.id)}
@@ -349,6 +364,14 @@ export default function TrucksPage() {
                             >
                               {truck.isActive ? 'Active' : 'Inactive'}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Button asChild variant="ghost" size="icon">
+                              <Link href={`/trucks/${truck.id}`} onClick={(e) => e.stopPropagation()}>
+                                <Pencil className="h-4 w-4" />
+                                <span className="sr-only">Edit Truck</span>
+                              </Link>
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))

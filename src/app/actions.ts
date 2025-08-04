@@ -100,6 +100,29 @@ export async function addTruck(companyId: string, truckData: Truck): Promise<{ s
     }
 }
 
+export async function updateTruck(companyId: string, truckId: string, truckData: Partial<Truck>): Promise<{ success: boolean; error?: string }> {
+    if (!companyId || !truckId) {
+        return { success: false, error: 'Company ID and Truck ID are required.' };
+    }
+
+    try {
+        const truckDocRef = doc(db, 'mainCompanies', companyId, 'trucks', truckId);
+        
+        // Remove id from the data to prevent it from being written to the document
+        const dataToUpdate = { ...truckData };
+        delete dataToUpdate.id;
+
+        await updateDoc(truckDocRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp(),
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error updating truck:', error);
+        return { success: false, error: 'Failed to update the truck in the database.' };
+    }
+}
 
 export async function updateCompany(companyId: string, companyData: any): Promise<{ success: boolean; error?: string }> {
     if (!companyId) {
