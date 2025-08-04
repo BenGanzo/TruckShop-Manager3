@@ -8,7 +8,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyA5P6Jj--CRE4CdFA9tqiPyPSItzxnsr20",
   authDomain: "truck-shop-manager.firebaseapp.com",
   projectId: "truck-shop-manager",
-  storageBucket: "truck-shop-manager.firebasestorage.app",
+  storageBucket: "truck-shop-manager.appspot.com",
   messagingSenderId: "832217401611",
   appId: "1:832217401611:web:9fb4d76bdd4d4a3b59ba0e"
 };
