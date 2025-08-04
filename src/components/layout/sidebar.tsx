@@ -20,7 +20,6 @@ import {
 
 import {
   SidebarHeader,
-  Sidebar,
   SidebarContent,
   SidebarMenu,
   SidebarMenuItem,
