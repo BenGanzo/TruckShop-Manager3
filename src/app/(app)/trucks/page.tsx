@@ -93,20 +93,17 @@ export default function TrucksPage() {
     
     if (searchQuery) {
         const query = searchQuery.toLowerCase();
+        const idMatch = trucksByGroup.filter((truck: any) => truck.id?.toLowerCase().startsWith(query));
+        if (idMatch.length > 0) {
+            return idMatch;
+        }
+
         return trucksByGroup.filter((truck: any) => {
             return (
-                truck.id?.toLowerCase().includes(query) ||
                 truck.make?.toLowerCase().includes(query) ||
                 truck.model?.toLowerCase().includes(query) ||
                 truck.vin?.toLowerCase().includes(query)
             );
-        }).sort((a, b) => {
-            const aIdMatch = a.id?.toLowerCase().startsWith(query);
-            const bIdMatch = b.id?.toLowerCase().startsWith(query);
-
-            if (aIdMatch && !bIdMatch) return -1;
-            if (!aIdMatch && bIdMatch) return 1;
-            return 0;
         });
     }
 
@@ -325,7 +322,7 @@ export default function TrucksPage() {
                     ) : filteredTrucks.length === 0 ? (
                        <TableRow>
                         <TableCell colSpan={6} className="h-24 text-center">
-                          {selectedGroup ? 'No trucks found in this group.' : 'No trucks found. Add your first truck to get started.'}
+                          {searchQuery ? 'No trucks match your search.' : (selectedGroup ? 'No trucks found in this group.' : 'No trucks found. Add your first truck to get started.')}
                         </TableCell>
                       </TableRow>
                     ) : (
