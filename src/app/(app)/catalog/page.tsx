@@ -1,7 +1,6 @@
 
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -18,7 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { PlusCircle } from 'lucide-react';
+import { AddCatalogItemDialog } from '@/components/add-catalog-item-dialog';
 
 export default function CatalogPage() {
   // Placeholder data - in the future, this will come from Firestore
@@ -51,10 +50,7 @@ export default function CatalogPage() {
                   A list of all parts available.
                 </CardDescription>
               </div>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Part
-              </Button>
+              <AddCatalogItemDialog type="part" />
             </CardHeader>
             <CardContent className="p-0">
               <div className="rounded-md border-t">
@@ -93,10 +89,7 @@ export default function CatalogPage() {
                   A list of all standard services offered.
                 </CardDescription>
               </div>
-              <Button>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Service
-              </Button>
+              <AddCatalogItemDialog type="labor" />
             </CardHeader>
             <CardContent className="p-0">
               <div className="rounded-md border-t">
