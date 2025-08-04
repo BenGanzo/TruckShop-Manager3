@@ -1,16 +1,18 @@
+
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration - THIS IS A PUBLIC CONFIG
+// INSTRUCCIONES: Reemplaza este objeto con la configuración de tu propio proyecto de Firebase.
+// Puedes encontrarla en la configuración de tu proyecto en la consola de Firebase.
 const firebaseConfig = {
-  apiKey: "AIzaSyBe_kCj8a2zozwAZFDcRIRfD4hA4Pj-3pE",
-  authDomain: "truckshop-manager-3a957.firebaseapp.com",
-  projectId: "truckshop-manager-3a957",
-  storageBucket: "truckshop-manager-3a957.appspot.com",
-  messagingSenderId: "1038423233256",
-  appId: "1:1038423233256:web:614b73523c914022a36417"
+  apiKey: "POR_FAVOR_REEMPLAZA_CON_TU_API_KEY",
+  authDomain: "POR_FAVOR_REEMPLAZA_CON_TU_AUTH_DOMAIN",
+  projectId: "POR_FAVOR_REEMPLAZA_CON_TU_PROJECT_ID",
+  storageBucket: "POR_FAVOR_REEMPLAZA_CON_TU_STORAGE_BUCKET",
+  messagingSenderId: "POR_FAVOR_REEMPLAZA_CON_TU_MESSAGING_SENDER_ID",
+  appId: "POR_FAVOR_REEMPLAZA_CON_TU_APP_ID"
 };
 
 // Initialize Firebase
