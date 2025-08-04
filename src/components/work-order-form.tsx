@@ -2,55 +2,39 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { getPartRecommendations } from '@/app/actions';
 
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Wrench, Cog, List, Info } from 'lucide-react';
+import { Sparkles, Wrench, Cog, Info } from 'lucide-react';
 import type { WorkOrderPartRecommendationOutput } from '@/ai/flows/work-order-part-recommendation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-const formSchema = z.object({
-  problemDescription: z.string().min(1, {
-    message: 'Problem description is required to get recommendations.',
-  }),
-});
+interface WorkOrderFormProps {
+  problemDescription: string;
+  onDescriptionChange: (value: string) => void;
+}
 
-export default function WorkOrderForm() {
+export default function WorkOrderForm({ problemDescription, onDescriptionChange }: WorkOrderFormProps) {
   const [recommendations, setRecommendations] = useState<WorkOrderPartRecommendationOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      problemDescription: '',
-    },
-  });
-
-  const problemDescription = useWatch({
-    control: form.control,
-    name: 'problemDescription',
-  });
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
+  async function getRecommendations() {
+    if (!problemDescription) {
+        toast({
+            variant: 'destructive',
+            title: 'Missing Information',
+            description: 'Please enter a problem description to get recommendations.',
+        });
+        return;
+    }
+    
     setIsLoading(true);
     setRecommendations(null);
-    const result = await getPartRecommendations(values);
+    const result = await getPartRecommendations({ problemDescription });
     setIsLoading(false);
 
     if (result.success && result.data) {
@@ -80,50 +64,35 @@ export default function WorkOrderForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="problemDescription"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                     {/* The label is provided by the main WO form, so we hide it here */}
-                    <Textarea
-                      placeholder="e.g., 'Truck is making a grinding noise when braking and pulling to the left.'"
-                      className="resize-none sr-only" 
-                      {...field}
-                      rows={3}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            
-            {!problemDescription && (
-                 <div className="text-center text-sm text-muted-foreground p-8 bg-muted rounded-lg">
-                    Fill in vehicle and problem to get suggestions.
-                </div>
-            )}
-            
-            <div className="flex justify-center">
-                 <Button type="submit" disabled={isLoading || !problemDescription} variant="outline">
-                  {isLoading ? (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                      Getting Suggestions...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Get AI Suggestions
-                    </>
-                  )}
-                </Button>
+        {/* This textarea is visually hidden but controlled by the main form. 
+            This component just reads the value and provides a button to trigger the AI. */}
+        <Textarea
+            value={problemDescription}
+            onChange={(e) => onDescriptionChange(e.target.value)}
+            className="sr-only"
+        />
+        
+        {!problemDescription && (
+             <div className="text-center text-sm text-muted-foreground p-8 bg-muted rounded-lg">
+                Fill in the problem description in the card above to get suggestions.
             </div>
-          </form>
-        </Form>
+        )}
+        
+        <div className="flex justify-center">
+             <Button type="button" onClick={getRecommendations} disabled={isLoading || !problemDescription} variant="outline">
+              {isLoading ? (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
+                  Getting Suggestions...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Get AI Suggestions
+                </>
+              )}
+            </Button>
+        </div>
         
         {recommendations && (
            <div className="mt-6 space-y-4">
