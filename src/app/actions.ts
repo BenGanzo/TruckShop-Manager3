@@ -1,9 +1,8 @@
 
 'use server';
 
-import { getFirestore, collection, writeBatch, doc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import { z } from 'zod';
 import type { Asset, Truck } from '@/lib/types';
 
 const db = getFirestore(app);
@@ -83,17 +82,41 @@ export async function addTruck(companyId: string, truckData: Truck): Promise<{ s
     try {
         const companyRef = doc(db, 'mainCompanies', companyId);
         const trucksCollectionRef = collection(companyRef, 'trucks');
+        const truckDocRef = doc(trucksCollectionRef, truckData.id);
         
-        await addDoc(trucksCollectionRef, {
+        const dataToSet = {
             ...truckData,
             companyId: companyId,
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp(),
-        });
+        };
+
+        await setDoc(truckDocRef, dataToSet);
 
         return { success: true };
     } catch (error: any) {
         console.error('Error adding truck:', error);
         return { success: false, error: 'Failed to save the truck to the database.' };
+    }
+}
+
+
+export async function updateCompany(companyId: string, companyData: any): Promise<{ success: boolean; error?: string }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+
+    try {
+        const companyDocRef = doc(db, 'mainCompanies', companyId);
+        
+        await updateDoc(companyDocRef, {
+            ...companyData,
+            updatedAt: serverTimestamp(),
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error updating company:', error);
+        return { success: false, error: 'Failed to update the company in the database.' };
     }
 }

@@ -21,7 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PlusCircle } from 'lucide-react';
+import { Pencil, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -76,6 +76,7 @@ export default function AdminOwnersPage() {
                   <TableHead>Contact Name</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Created On</TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -87,17 +88,18 @@ export default function AdminOwnersPage() {
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                       <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                     </TableRow>
                   ))
                 ) : error ? (
                    <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                    <TableCell colSpan={6} className="h-24 text-center text-destructive">
                       Error loading owners: {error.message}
                     </TableCell>
                   </TableRow>
                 ) : owners.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
+                    <TableCell colSpan={6} className="h-24 text-center">
                       No owners found. Add one to get started.
                     </TableCell>
                   </TableRow>
@@ -109,6 +111,14 @@ export default function AdminOwnersPage() {
                       <TableCell>{owner.contactName || 'N/A'}</TableCell>
                       <TableCell>{owner.phone1 || 'N/A'}</TableCell>
                       <TableCell>{formatDate(owner.createdAt)}</TableCell>
+                      <TableCell>
+                        <Button asChild variant="ghost" size="icon">
+                           <Link href={`/admin/owners/${owner.id}`}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit Owner</span>
+                          </Link>
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}

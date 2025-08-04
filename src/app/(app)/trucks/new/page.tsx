@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Calendar } from '@/components/ui/calendar';
 import {
   Popover,
@@ -119,6 +118,7 @@ export default function AddTruckPage() {
   const form = useForm<TruckFormData>({
     resolver: zodResolver(truckFormSchema),
     defaultValues: {
+      status: 'active',
       isActive: true,
       insuranceCoverage: false,
       dashCamera: false,
@@ -431,7 +431,7 @@ export default function AddTruckPage() {
               />
                <FormField control={form.control} name="insuranceCoverage" render={({ field }) => (
                   <FormItem className="flex flex-row items-center space-x-2 pt-6">
-                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                     <FormLabel>Covered by reporting insurance company</FormLabel>
                   </FormItem>
                 )}
