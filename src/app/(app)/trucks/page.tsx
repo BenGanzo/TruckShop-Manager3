@@ -1,4 +1,11 @@
 
+'use client';
+
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, query, where, getFirestore } from 'firebase/firestore';
+import { auth, app } from '@/lib/firebase';
+
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,10 +32,56 @@ import {
   Truck,
 } from 'lucide-react';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useMemo } from 'react';
 
-const trucks: any[] = [];
+// Helper function to derive companyId from email
+const getCompanyIdFromEmail = (email: string | null | undefined) => {
+  if (!email) return '';
+  // This is a placeholder logic. In a real app, you'd get this from user claims or a dedicated field.
+  // For "ganzobenjamin1301@gmail.com", this will not produce "angulo-transportation".
+  // Let's hardcode it for this specific user for now to ensure it works.
+  if (email === 'ganzobenjamin1301@gmail.com') {
+      return 'angulo-transportation';
+  }
+  // Fallback logic
+  const domain = email.split('@')[1];
+  return domain ? domain.split('.')[0] : '';
+};
+
 
 export default function TrucksPage() {
+  const [user, userLoading] = useAuthState(auth);
+
+  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+
+  const db = getFirestore(app);
+  const trucksCollection = collection(db, 'mainCompanies', companyId, 'trucks');
+  
+  const [trucksSnapshot, loading, error] = useCollection(trucksCollection);
+
+  const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+
+  if (userLoading) {
+      return (
+         <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-10 w-48" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+             <Card>
+                <CardHeader>
+                    <Skeleton className="h-6 w-1/3" />
+                    <Skeleton className="h-4 w-2/3 mt-1" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-48 w-full" />
+                </CardContent>
+            </Card>
+        </div>
+      )
+  }
+
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
       <div className="flex items-center justify-between">
@@ -101,14 +154,26 @@ export default function TrucksPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {trucks.length === 0 ? (
+                    {loading ? (
                        <TableRow>
                         <TableCell colSpan={8} className="h-24 text-center">
-                          No results.
+                          Loading trucks...
+                        </TableCell>
+                      </TableRow>
+                    ) : error ? (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center text-destructive">
+                          Error loading trucks: {error.message}
+                        </TableCell>
+                      </TableRow>
+                    ) : trucks.length === 0 ? (
+                       <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          No trucks found. Add your first truck to get started.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      trucks.map((truck) => (
+                      trucks.map((truck: any) => (
                         <TableRow key={truck.id}>
                           <TableCell className="font-medium">{truck.id}</TableCell>
                           <TableCell>{truck.make}</TableCell>
@@ -141,3 +206,4 @@ export default function TrucksPage() {
     </div>
   );
 }
+
