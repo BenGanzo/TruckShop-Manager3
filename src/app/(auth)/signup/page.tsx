@@ -1,5 +1,10 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getFirestore, doc, setDoc } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -11,10 +16,57 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 import { TruckIcon } from 'lucide-react';
 import Link from 'next/link';
 
+const auth = getAuth(app);
+const db = getFirestore(app);
+
 export default function SignupPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+  const [companyName, setCompanyName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Create a document in Firestore for the new company
+      await setDoc(doc(db, 'mainCompanies', user.uid), {
+        companyName: companyName,
+        adminUid: user.uid,
+        adminEmail: user.email,
+        createdAt: new Date(),
+      });
+      
+      toast({
+        title: "Account Created!",
+        description: "Your company account has been successfully created.",
+      });
+
+      // Redirect to dashboard
+      router.push('/dashboard');
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Signup Failed',
+        description: error.message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   return (
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
@@ -26,29 +78,52 @@ export default function SignupPage() {
           Enter your company details and create your admin account.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="company-name">Company Name</Label>
-          <Input id="company-name" placeholder="e.g., Angulo Transportation" required />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="email">Your Email</Label>
-          <Input id="email" type="email" placeholder="admin@yourcompany.com" required />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" required />
-        </div>
-      </CardContent>
-      <CardFooter className="flex flex-col gap-4">
-        <Button className="w-full">Create Account</Button>
+      <form onSubmit={handleSignUp}>
+        <CardContent className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="company-name">Company Name</Label>
+            <Input 
+              id="company-name" 
+              placeholder="e.g., Angulo Transportation" 
+              required 
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="email">Your Email</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              placeholder="admin@yourcompany.com" 
+              required 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="password">Password</Label>
+            <Input 
+              id="password" 
+              type="password" 
+              required 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button className="w-full" type="submit" disabled={isLoading}>
+            {isLoading ? 'Creating Account...' : 'Create Account'}
+          </Button>
          <div className="text-sm text-center">
             Already have an account?{' '}
             <Link href="/login" className="underline">
                 Sign in
             </Link>
         </div>
-      </CardFooter>
+        </CardFooter>
+      </form>
     </Card>
   );
 }
