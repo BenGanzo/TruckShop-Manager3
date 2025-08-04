@@ -3,7 +3,7 @@
 
 import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Asset, Truck } from '@/lib/types';
+import type { Asset, Owner, Truck } from '@/lib/types';
 
 const db = getFirestore(app);
 
@@ -142,5 +142,33 @@ export async function assignTrucksToOwner(companyId: string, truckIds: string[],
     } catch (error: any) {
         console.error('Error assigning trucks to owner:', error);
         return { success: false, error: 'Failed to update truck assignments in the database.' };
+    }
+}
+
+export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>): Promise<{ success: boolean; error?: string; }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+
+    try {
+        const companyRef = doc(db, 'mainCompanies', companyId);
+        const ownersCollectionRef = collection(companyRef, 'owners');
+        
+        // Firestore will auto-generate an ID for the new document
+        const newOwnerDocRef = doc(ownersCollectionRef);
+
+        const dataToSet = {
+            ...ownerData,
+            id: newOwnerDocRef.id,
+            companyId: companyId,
+            createdAt: serverTimestamp(),
+        };
+
+        await setDoc(newOwnerDocRef, dataToSet);
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error adding owner:', error);
+        return { success: false, error: 'Failed to save the owner to the database.' };
     }
 }

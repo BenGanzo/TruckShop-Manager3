@@ -60,4 +60,15 @@ export interface Truck {
     refrigerator?: boolean;
     bunkHeater?: boolean;
     isActive?: boolean;
+    ownerId?: string;
+}
+
+export interface Owner {
+  id: string;
+  ownerName: string;
+  contactFirstName?: string;
+  contactLastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
 }
