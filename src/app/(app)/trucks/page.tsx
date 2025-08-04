@@ -79,16 +79,31 @@ export default function TrucksPage() {
   const [selectedTrucks, setSelectedTrucks] = useState<Set<string>>(new Set());
   const [selectedOwner, setSelectedOwner] = useState<string>('');
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
   const owners = ownersSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() as { ownerName: string } })) || [];
   
   const filteredTrucks = useMemo(() => {
-    if (!selectedGroup) {
-      return trucks; // "All Trucks"
+    let trucksByGroup = trucks;
+    if (selectedGroup) {
+      trucksByGroup = trucks.filter((truck: any) => truck.ownerId === selectedGroup);
     }
-    return trucks.filter((truck: any) => truck.ownerId === selectedGroup);
-  }, [trucks, selectedGroup]);
+    
+    if (searchQuery) {
+        return trucksByGroup.filter((truck: any) => {
+            const query = searchQuery.toLowerCase();
+            return (
+                truck.id?.toLowerCase().includes(query) ||
+                truck.make?.toLowerCase().includes(query) ||
+                truck.model?.toLowerCase().includes(query) ||
+                truck.vin?.toLowerCase().includes(query)
+            );
+        });
+    }
+
+    return trucksByGroup;
+  }, [trucks, selectedGroup, searchQuery]);
 
   const activeTrucksCount = useMemo(() => {
     return trucks.filter((truck: any) => truck.isActive).length;
@@ -235,6 +250,8 @@ export default function TrucksPage() {
                 <Input
                   placeholder="Search trucks by ID, make, model, or VIN..."
                   className="pl-8 w-full"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
             </CardHeader>
@@ -341,5 +358,3 @@ export default function TrucksPage() {
     </div>
   );
 }
-
-    
