@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useAuthState } from 'react-firebase-hooks/auth';
@@ -91,14 +92,21 @@ export default function TrucksPage() {
     }
     
     if (searchQuery) {
+        const query = searchQuery.toLowerCase();
         return trucksByGroup.filter((truck: any) => {
-            const query = searchQuery.toLowerCase();
             return (
                 truck.id?.toLowerCase().includes(query) ||
                 truck.make?.toLowerCase().includes(query) ||
                 truck.model?.toLowerCase().includes(query) ||
                 truck.vin?.toLowerCase().includes(query)
             );
+        }).sort((a, b) => {
+            const aIdMatch = a.id?.toLowerCase().startsWith(query);
+            const bIdMatch = b.id?.toLowerCase().startsWith(query);
+
+            if (aIdMatch && !bIdMatch) return -1;
+            if (!aIdMatch && bIdMatch) return 1;
+            return 0;
         });
     }
 
