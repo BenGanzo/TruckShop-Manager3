@@ -19,7 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { TruckIcon } from 'lucide-react';
-import Link from 'next/link';
 
 const auth = getAuth(app);
 const db = getFirestore(app);
@@ -125,12 +124,6 @@ export default function LoginPage() {
           <Button className="w-full" type="submit" disabled={isLoading}>
             {isLoading ? 'Signing In...' : 'Sign In'}
           </Button>
-          <div className="text-sm text-center">
-              Don&apos;t have an account?{' '}
-              <Link href="/signup" className="underline">
-                  Sign up
-              </Link>
-          </div>
         </CardFooter>
       </form>
     </Card>
