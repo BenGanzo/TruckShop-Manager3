@@ -91,14 +91,30 @@ export default function CreateCompanyPage() {
     }
 
     try {
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-
       const batch = writeBatch(db);
+      let adminUid: string | null = null;
+      let userEmail: string | null = null;
 
-      // 1. Create the company document with all the new details
-      batch.set(companyDocRef, {
+      // Create user only if email and password are provided
+      if (email && password) {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        adminUid = user.uid;
+        userEmail = user.email;
+
+        // Create the user document in the `users` subcollection
+        const userDocRef = doc(collection(companyDocRef, 'users'), adminUid);
+        batch.set(userDocRef, {
+          email: userEmail,
+          role: 'admin',
+          firstName: contactFirstName,
+          lastName: contactLastName,
+          createdAt: serverTimestamp(),
+        });
+      }
+      
+      // Create the company document
+      const companyData: any = {
         companyId: companyId,
         companyName: companyName,
         website: website,
@@ -108,19 +124,14 @@ export default function CreateCompanyPage() {
         state: state,
         city: city,
         phone1: phone1,
-        adminUid: user.uid,
         createdAt: serverTimestamp(),
-      });
+      };
+
+      if (adminUid) {
+        companyData.adminUid = adminUid;
+      }
       
-      // 2. Create the first user (admin) in the `users` subcollection
-      const userDocRef = doc(collection(companyDocRef, 'users'), user.uid);
-      batch.set(userDocRef, {
-        email: user.email,
-        role: 'admin',
-        firstName: contactFirstName,
-        lastName: contactLastName,
-        createdAt: serverTimestamp(),
-      });
+      batch.set(companyDocRef, companyData);
       
       await batch.commit();
 
@@ -167,7 +178,7 @@ export default function CreateCompanyPage() {
             </div>
             <CardTitle className="text-2xl font-headline">Company Created!</CardTitle>
             <CardDescription>
-                Provide the new administrator with the Company ID and their credentials.
+                Provide the new administrator with the Company ID and their credentials if they were created.
             </CardDescription>
         </CardHeader>
         <CardContent>
@@ -200,7 +211,7 @@ export default function CreateCompanyPage() {
             <div>
                 <CardTitle className="text-2xl font-headline">Create a New Company</CardTitle>
                 <CardDescription>
-                  Enter the new company's details and create their first admin account. The Company ID will be generated automatically.
+                  Enter the new company's details. You can optionally create an admin account now or do it later.
                 </CardDescription>
             </div>
         </div>
@@ -256,23 +267,23 @@ export default function CreateCompanyPage() {
             </div>
 
             <div>
-                 <Label className="text-lg font-semibold flex items-center gap-2"><UserPlus/> Admin Account</Label>
+                 <Label className="text-lg font-semibold flex items-center gap-2"><UserPlus/> Admin Account (Optional)</Label>
                 <Separator className="mt-2 mb-4"/>
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label htmlFor="email">Admin's Email</Label>
-                        <Input id="email" type="email" placeholder="admin@theircompany.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <Input id="email" type="email" placeholder="admin@theircompany.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="password">Temporary Password</Label>
-                        <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
+                        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
                     </div>
                 </div>
             </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button className="w-full" type="submit" disabled={isLoading}>
-            {isLoading ? 'Creating Account...' : 'Create Company and Admin'}
+            {isLoading ? 'Creating Account...' : 'Create Company'}
           </Button>
         </CardFooter>
       </form>
