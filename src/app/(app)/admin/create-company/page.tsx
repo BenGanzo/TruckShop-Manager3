@@ -168,7 +168,7 @@ export default function CreateCompanyPage() {
             <CardTitle className="text-2xl font-headline">Company Created!</CardTitle>
             <CardDescription>
                 Provide the new administrator with the Company ID and their credentials.
-            </D>
+            </CardDescription>
         </CardHeader>
         <CardContent>
             <Alert>
