@@ -1,4 +1,5 @@
 
+
 export interface Asset {
     id: string;
     isActive: boolean;
@@ -11,4 +12,52 @@ export interface Asset {
     purchasedOn: string;
     tagExpireOn: string;
     inspectionDueOn: string;
+}
+
+export interface Truck {
+    id: string;
+    status: string;
+    make?: string;
+    model?: string;
+    engineMake?: string;
+    engineModel?: string;
+    engineSerial?: string;
+    type?: string;
+    vin?: string;
+    year?: number;
+    titleNumber?: string;
+    plateNumber?: string;
+    state?: string;
+    inServiceOn?: Date;
+    tagExpireOn?: Date;
+    inspectionDueOn?: Date;
+    purchasePrice?: number;
+    ownedBy?: string;
+    lessor?: string;
+    insuranceCoverage?: boolean;
+    transmission?: string;
+    color?: string;
+    speedLimit?: number;
+    frontTireSize?: string;
+    rearTireSize?: string;
+    height?: string;
+    emptyWeight?: number;
+    grossWeight?: number;
+    tankCapacity?: number;
+    initialMileage?: number;
+    averageMpg?: number;
+    axles?: number;
+    dashCamera?: boolean;
+    apu?: boolean;
+    pedalCoach?: boolean;
+    laneDeparture?: boolean;
+    tireChains?: boolean;
+    vSpoilers?: boolean;
+    adaptiveCruise?: boolean;
+    inverter?: boolean;
+    hasPets?: boolean;
+    flowBelow?: boolean;
+    refrigerator?: boolean;
+    bunkHeater?: boolean;
+    isActive?: boolean;
 }

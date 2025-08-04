@@ -1,10 +1,10 @@
 
 'use server';
 
-import { getFirestore, collection, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, collection, writeBatch, doc, serverTimestamp, addDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { z } from 'zod';
-import type { Asset } from '@/lib/types';
+import type { Asset, Truck } from '@/lib/types';
 
 const db = getFirestore(app);
 
@@ -37,7 +37,7 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
   let successCount = 0;
   let errorCount = 0;
 
-  const companyDocRef = doc(db, 'mainCompanies', companyId);
+  const companyRef = doc(db, 'mainCompanies', companyId);
 
   for (const asset of assets) {
     if (!asset.id) {
@@ -48,12 +48,13 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
     // Determine if it's a truck or trailer
     const isTrailer = !!asset.trailerType && asset.trailerType.trim() !== '';
     const collectionName = isTrailer ? 'trailers' : 'trucks';
-
-    const assetDocRef = doc(collection(companyDocRef, collectionName), asset.id);
+    
+    const assetCollectionRef = collection(companyRef, collectionName);
+    const assetDocRef = doc(assetCollectionRef, asset.id);
 
     const dataToSet = {
       ...asset,
-      companyId: companyId, // Add companyId to the document
+      companyId: companyId,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
@@ -72,4 +73,27 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
     console.error('Error committing batch import:', error);
     throw new Error('Failed to save imported assets to the database.');
   }
+}
+
+export async function addTruck(companyId: string, truckData: Truck): Promise<{ success: boolean; error?: string }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+
+    try {
+        const companyRef = doc(db, 'mainCompanies', companyId);
+        const trucksCollectionRef = collection(companyRef, 'trucks');
+        
+        await addDoc(trucksCollectionRef, {
+            ...truckData,
+            companyId: companyId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error adding truck:', error);
+        return { success: false, error: 'Failed to save the truck to the database.' };
+    }
 }
