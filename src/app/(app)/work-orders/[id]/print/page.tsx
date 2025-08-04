@@ -71,7 +71,7 @@ export default function PrintWorkOrderPage() {
           <div ref={invoiceRef} className="max-w-4xl mx-auto p-8 bg-card text-card-foreground rounded-lg shadow-lg print:shadow-none print:rounded-none print:border-none print:p-2">
             
             {/* Header */}
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">
                     <Truck className="h-12 w-12 text-primary" />
                     <div>
@@ -87,7 +87,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Vehicle and Date Info */}
-            <div className="grid grid-cols-3 gap-4 mb-6 p-4 border rounded-lg">
+            <div className="grid grid-cols-3 gap-y-4 gap-x-8 mb-8 p-4 border rounded-lg">
                 <div>
                     <p className="text-sm text-muted-foreground">Vehicle ID</p>
                     <p className="font-semibold">{workOrder.vehicle}</p>
@@ -111,14 +111,14 @@ export default function PrintWorkOrderPage() {
             </div>
 
              {/* Problem Description */}
-            <div className="mb-6">
-                 <h3 className="font-semibold text-lg mb-2">Reported Problem</h3>
-                 <p className="text-sm p-4 bg-muted rounded-lg">{workOrder.problem}</p>
+            <div className="mb-8">
+                 <h3 className="font-semibold text-base mb-2">Reported Problem</h3>
+                 <div className="text-sm p-4 bg-muted rounded-lg">{workOrder.problem}</div>
             </div>
 
             {/* Parts */}
-            <div className="mb-6">
-                <h3 className="font-semibold text-lg mb-2">Parts Used</h3>
+            <div className="mb-4">
+                <h3 className="font-semibold text-base mb-2">Parts Used</h3>
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
                         <TableHeader>
@@ -132,7 +132,7 @@ export default function PrintWorkOrderPage() {
                         <TableBody>
                             {workOrder.parts.map((part, i) => (
                                 <TableRow key={i}>
-                                    <TableCell>{part.name}</TableCell>
+                                    <TableCell className="font-medium">{part.name}</TableCell>
                                     <TableCell className="text-center">{part.qty}</TableCell>
                                     <TableCell className="text-right">${part.cost.toFixed(2)}</TableCell>
                                     <TableCell className="text-right font-medium">${(part.qty * part.cost).toFixed(2)}</TableCell>
@@ -144,8 +144,8 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Labor */}
-             <div className="mb-6">
-                <h3 className="font-semibold text-lg mb-2">Labor & Services</h3>
+             <div className="mb-8">
+                <h3 className="font-semibold text-base mb-2">Labor & Services</h3>
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
                         <TableHeader>
@@ -159,7 +159,7 @@ export default function PrintWorkOrderPage() {
                         <TableBody>
                              {workOrder.labor.map((item, i) => (
                                 <TableRow key={i}>
-                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell className="font-medium">{item.description}</TableCell>
                                     <TableCell className="text-center">{item.hours.toFixed(2)}</TableCell>
                                     <TableCell className="text-right">${item.rate.toFixed(2)}</TableCell>
                                     <TableCell className="text-right font-medium">${(item.hours * item.rate).toFixed(2)}</TableCell>
@@ -171,7 +171,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Totals */}
-            <div className="flex justify-end mb-6">
+            <div className="flex justify-end mb-8">
                 <div className="w-full max-w-sm space-y-2">
                     <div className="flex justify-between">
                         <span className="text-muted-foreground">Parts Total:</span>
@@ -199,7 +199,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Footer / Signature */}
-            <div className="border-t pt-8 mt-6 text-center text-muted-foreground">
+            <div className="border-t pt-8 mt-8 text-center text-muted-foreground">
                 <p>Thank you for your business!</p>
                 <div className="flex justify-around mt-16">
                     <div className="w-1/3 pt-2 border-t">
