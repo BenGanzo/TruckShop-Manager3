@@ -1,8 +1,10 @@
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getFirestore, collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,21 +22,49 @@ import { TruckIcon } from 'lucide-react';
 import Link from 'next/link';
 
 const auth = getAuth(app);
+const db = getFirestore(app);
 
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [companyId, setCompanyId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      // 1. Authenticate the user with email and password first
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Verify the company ID and user's membership
+      const companyQuery = query(collection(db, 'mainCompanies'), where('companyId', '==', companyId.toLowerCase()));
+      const companySnapshot = await getDocs(companyQuery);
+
+      if (companySnapshot.empty) {
+        throw new Error("Invalid Company ID.");
+      }
+
+      const companyDoc = companySnapshot.docs[0];
+      const userDocRef = doc(db, 'mainCompanies', companyDoc.id, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
+
+      if (!userDoc.exists()) {
+        throw new Error("You are not a member of this company.");
+      }
+
+      // 3. If all checks pass, redirect to dashboard
       router.push('/dashboard');
+
     } catch (error: any) {
+       // If any check fails, sign the user out to be safe
+       if (auth.currentUser) {
+        await signOut(auth);
+      }
       toast({
         variant: 'destructive',
         title: 'Login Failed',
@@ -53,11 +83,22 @@ export default function LoginPage() {
         </div>
         <CardTitle className="text-2xl font-headline">Welcome Back</CardTitle>
         <CardDescription>
-          Enter your email and password to access your account.
+          Enter your credentials to access your company's account.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSignIn}>
         <CardContent className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="company-id">Company ID</Label>
+            <Input 
+              id="company-id" 
+              type="text" 
+              placeholder="e.g., angulo-transportation" 
+              required 
+              value={companyId}
+              onChange={(e) => setCompanyId(e.target.value)}
+            />
+          </div>
           <div className="grid gap-2">
             <Label htmlFor="email">Email</Label>
             <Input 
