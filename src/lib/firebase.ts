@@ -8,7 +8,7 @@ import { getFirestore } from "firebase/firestore";
 // Puedes encontrarla en la configuración de tu proyecto en la consola de Firebase.
 const firebaseConfig = {
   apiKey: "AIzaSyA5P6Jj--CRE4CdFA9tqiPYpSItzxnsr20",
-  authDomain: "POR_FAVOR_REEMPLAZA_CON_TU_AUTH_DOMAIN",
+  authDomain: "truck-shop-manager.firebaseapp.com",
   projectId: "POR_FAVOR_REEMPLAZA_CON_TU_PROJECT_ID",
   storageBucket: "POR_FAVOR_REEMPLAZA_CON_TU_STORAGE_BUCKET",
   messagingSenderId: "POR_FAVOR_REEMPLAZA_CON_TU_MESSAGING_SENDER_ID",
