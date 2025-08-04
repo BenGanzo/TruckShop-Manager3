@@ -172,3 +172,23 @@ export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>):
         return { success: false, error: 'Failed to save the owner to the database.' };
     }
 }
+
+export async function updateOwner(companyId: string, ownerId: string, ownerData: Partial<Owner>): Promise<{ success: boolean; error?: string }> {
+    if (!companyId || !ownerId) {
+        return { success: false, error: 'Company ID and Owner ID are required.' };
+    }
+
+    try {
+        const ownerDocRef = doc(db, 'mainCompanies', companyId, 'owners', ownerId);
+        
+        await updateDoc(ownerDocRef, {
+            ...ownerData,
+            updatedAt: serverTimestamp(),
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error updating owner:', error);
+        return { success: false, error: 'Failed to update the owner in the database.' };
+    }
+}

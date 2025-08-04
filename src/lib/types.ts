@@ -71,4 +71,5 @@ export interface Owner {
   email?: string;
   phone?: string;
   address?: string;
+  updatedAt?: any;
 }
