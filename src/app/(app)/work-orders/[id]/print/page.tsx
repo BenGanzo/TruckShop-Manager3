@@ -1,11 +1,14 @@
 
 'use client';
 
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Printer, Truck } from 'lucide-react';
+import { FileDown, Printer, Truck } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 // Placeholder data - In a real app, this would be fetched from Firestore based on the ID
 const workOrder = {
@@ -43,14 +46,29 @@ const grandTotal = subtotal + taxAmount;
 
 export default function PrintWorkOrderPage() {
   const params = useParams();
+  const invoiceRef = useRef<HTMLDivElement>(null);
+
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleGeneratePdf = async () => {
+    const input = invoiceRef.current;
+    if (input) {
+      const canvas = await html2canvas(input, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Work-Order-${params.id}.pdf`);
+    }
   };
 
   return (
     <div className="bg-background min-h-screen">
        <div className="p-4 md:p-8 print:p-0">
-          <div className="max-w-4xl mx-auto p-8 bg-card text-card-foreground rounded-lg shadow-lg print:shadow-none print:rounded-none print:border-none print:p-2">
+          <div ref={invoiceRef} className="max-w-4xl mx-auto p-8 bg-card text-card-foreground rounded-lg shadow-lg print:shadow-none print:rounded-none print:border-none print:p-2">
             
             {/* Header */}
             <div className="flex justify-between items-start mb-6">
@@ -194,10 +212,14 @@ export default function PrintWorkOrderPage() {
             </div>
           </div>
 
-          <div className="max-w-4xl mx-auto mt-4 flex justify-end print:hidden">
+          <div className="max-w-4xl mx-auto mt-4 flex justify-end gap-2 print:hidden">
               <Button onClick={handlePrint}>
                 <Printer className="mr-2 h-4 w-4"/>
-                Print Work Order
+                Print
+              </Button>
+               <Button variant="secondary" onClick={handleGeneratePdf}>
+                <FileDown className="mr-2 h-4 w-4"/>
+                Generate PDF
               </Button>
           </div>
        </div>
