@@ -18,6 +18,7 @@ import { PlusCircle, Trash2 } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { useState } from 'react';
 
 interface AddCatalogItemDialogProps {
   type: 'part' | 'labor';
@@ -25,6 +26,8 @@ interface AddCatalogItemDialogProps {
 
 export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
   const isPart = type === 'part';
+  const [hasPmRule, setHasPmRule] = useState(false);
+  
   // Placeholder for kit parts - in a real app, this would be managed with state
   const kitParts: any[] = [];
 
@@ -104,9 +107,27 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                     Has PM Rule?
                   </Label>
                    <div className="col-span-3 flex items-center">
-                      <Switch id="pm-rule" />
+                      <Switch id="pm-rule" checked={hasPmRule} onCheckedChange={setHasPmRule} />
                    </div>
                 </div>
+
+                {hasPmRule && (
+                    <div className="grid grid-cols-1 col-span-4 gap-4 pt-2 pl-4 pr-1 border-l-2 border-primary ml-[25%]">
+                         <p className="text-sm text-muted-foreground -ml-5 -mt-1 pl-1">Define the rule for this service.</p>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="pm-miles" className="text-right text-muted-foreground">
+                                Interval (Miles)
+                            </Label>
+                             <Input id="pm-miles" type="number" placeholder="e.g., 20000" className="col-span-3" />
+                         </div>
+                         <div className="grid grid-cols-4 items-center gap-4">
+                            <Label htmlFor="pm-days" className="text-right text-muted-foreground">
+                                Interval (Days)
+                            </Label>
+                            <Input id="pm-days" type="number" placeholder="e.g., 90" className="col-span-3" />
+                         </div>
+                    </div>
+                )}
               </div>
 
               <Separator className="my-4" />
