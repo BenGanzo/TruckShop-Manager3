@@ -185,14 +185,6 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
           <SidebarGroup>
             <SidebarGroupLabel>Admin</SidebarGroupLabel>
-             <SidebarMenuItem>
-               <SidebarMenuButton asChild isActive={isActive('/settings')} tooltip="Settings">
-                <Link href="/settings">
-                  <Settings />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={isActive('/admin/users')} tooltip="Users">
                 <Link href="/admin/users">

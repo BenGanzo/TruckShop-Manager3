@@ -112,14 +112,6 @@ export default function CreateWorkOrderPage() {
                 <CardTitle>Metrics & Scheduling</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                    <Label htmlFor="mileage">Current Mileage</Label>
-                    <Input id="mileage" placeholder="0" />
-                </div>
-                 <div className="space-y-2">
-                    <Label htmlFor="next-service-miles">Next Service (Miles)</Label>
-                    <Input id="next-service-miles" placeholder="0" />
-                </div>
                 <div className="space-y-2">
                   <Label>Arrival Date</Label>
                   <Popover>
@@ -149,34 +141,9 @@ export default function CreateWorkOrderPage() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div className="space-y-2">
-                  <Label>Departure Date</Label>
-                   <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={'outline'}
-                        className={cn(
-                          'w-full justify-start text-left font-normal',
-                          !departureDate && 'text-muted-foreground'
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {departureDate ? (
-                          format(departureDate, 'PPP')
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={departureDate}
-                        onSelect={setDepartureDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                 <div className="space-y-2">
+                    <Label htmlFor="mileage">Current Mileage</Label>
+                    <Input id="mileage" placeholder="0" />
                 </div>
                 <div className="space-y-2">
                   <Label>Next Service (Date)</Label>
@@ -202,6 +169,39 @@ export default function CreateWorkOrderPage() {
                         mode="single"
                         selected={nextServiceDate}
                         onSelect={setNextServiceDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="next-service-miles">Next Service (Miles)</Label>
+                    <Input id="next-service-miles" placeholder="0" />
+                </div>
+                 <div className="space-y-2 md:col-span-2">
+                  <Label>Departure Date</Label>
+                   <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={'outline'}
+                        className={cn(
+                          'w-full justify-start text-left font-normal',
+                          !departureDate && 'text-muted-foreground'
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {departureDate ? (
+                          format(departureDate, 'PPP')
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={departureDate}
+                        onSelect={setDepartureDate}
                         initialFocus
                       />
                     </PopoverContent>
