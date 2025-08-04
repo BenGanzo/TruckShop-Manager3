@@ -114,7 +114,7 @@ export default function AdminCompaniesPage() {
                       <TableCell>{formatDate(company.createdAt)}</TableCell>
                       <TableCell>
                         <Button asChild variant="ghost" size="icon">
-                           <Link href={`/admin/companies/${company.id}`}>
+                           <Link href={`/admin/owners/${company.id}`}>
                             <Pencil className="h-4 w-4" />
                             <span className="sr-only">Edit Company</span>
                           </Link>
@@ -131,3 +131,4 @@ export default function AdminCompaniesPage() {
     </div>
   );
 }
+
