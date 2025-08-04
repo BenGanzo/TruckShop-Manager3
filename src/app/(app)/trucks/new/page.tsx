@@ -30,6 +30,7 @@ import { format } from 'date-fns';
 import { ArrowLeft, CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function AddTruckPage() {
   const [inServiceDate, setInServiceDate] = React.useState<Date | undefined>();
@@ -274,6 +275,114 @@ export default function AddTruckPage() {
                 <Switch id="insurance-coverage" />
                 <Label htmlFor="insurance-coverage">Covered by reporting insurance company</Label>
               </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Vehicle Options / Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+               <div className="space-y-2">
+                  <Label htmlFor="transmission">Transmission</Label>
+                  <Input id="transmission" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="color">Color</Label>
+                  <Input id="color" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="speed-limit">Speed Limit</Label>
+                  <Input id="speed-limit" type="number" />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="front-tire-size">Front Tire Size</Label>
+                  <Input id="front-tire-size" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rear-tire-size">Rear Tire Size</Label>
+                  <Input id="rear-tire-size" />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="height">Height</Label>
+                  <Input id="height" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="empty-weight">Empty Weight</Label>
+                  <Input id="empty-weight" type="number" />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="gross-weight">Gross Weight</Label>
+                  <Input id="gross-weight" type="number" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tank-capacity">Tank Capacity</Label>
+                  <Input id="tank-capacity" type="number" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="initial-mileage">Initial Mileage</Label>
+                  <Input id="initial-mileage" type="number" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="average-mpg">Average MPG</Label>
+                  <Input id="average-mpg" type="number" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="axles">Axles</Label>
+                  <Input id="axles" type="number" />
+                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="dash-camera" />
+                    <Label htmlFor="dash-camera">Dash Camera</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="apu" />
+                    <Label htmlFor="apu">APU</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="pedal-coach" />
+                    <Label htmlFor="pedal-coach">Pedal Coach</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="lane-departure" />
+                    <Label htmlFor="lane-departure">Lane Departure</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="tire-chains" />
+                    <Label htmlFor="tire-chains">Tire Chains</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="v-spoilers" />
+                    <Label htmlFor="v-spoilers">V-Spoilers</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="adaptive-cruise" />
+                    <Label htmlFor="adaptive-cruise">Adaptive Cruise</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="inverter" />
+                    <Label htmlFor="inverter">Inverter</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="has-pets" />
+                    <Label htmlFor="has-pets">Has Pets</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="flow-below" />
+                    <Label htmlFor="flow-below">Flow Below</Label>
+                </div>
+                 <div className="flex items-center space-x-2">
+                    <Checkbox id="refrigerator" />
+                    <Label htmlFor="refrigerator">Refrigerator</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Checkbox id="bunk-heater" />
+                    <Label htmlFor="bunk-heater">Bunk Heater</Label>
+                </div>
+            </div>
           </CardContent>
         </Card>
       </div>
