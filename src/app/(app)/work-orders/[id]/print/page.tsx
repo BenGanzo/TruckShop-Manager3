@@ -66,7 +66,7 @@ export default function PrintWorkOrderPage() {
   };
 
   return (
-    <div className="bg-background min-h-screen">
+    <div className="bg-background">
        <div className="p-4 md:p-8 print:p-0">
           <div ref={invoiceRef} className="max-w-4xl mx-auto p-8 bg-card text-card-foreground rounded-lg shadow-lg print:shadow-none print:rounded-none print:border-none print:p-2">
             
