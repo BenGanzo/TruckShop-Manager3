@@ -105,7 +105,7 @@ export default function AdminImportPage() {
               Select your prepared CSV file to begin the import process.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6 flex flex-col">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label>CSV File</Label>
               {file ? (
