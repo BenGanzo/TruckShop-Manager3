@@ -65,9 +65,6 @@ export default function AddTrailerPage() {
             </h1>
             <div className="flex items-center gap-2">
               <Input id="trailer-id" placeholder="A133" className="w-24" />
-              <Button variant="outline" size="icon">
-                <RefreshCw className="h-4 w-4" />
-              </Button>
             </div>
             <div className="flex items-center gap-2">
               <Switch id="status-active" defaultChecked />
@@ -470,4 +467,3 @@ export default function AddTrailerPage() {
     </div>
   );
 }
-
