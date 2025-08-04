@@ -87,7 +87,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Vehicle and Date Info */}
-            <div className="grid grid-cols-3 gap-y-4 gap-x-8 mb-8 p-4 border rounded-lg">
+            <div className="grid grid-cols-3 gap-y-2 gap-x-8 mb-6">
                 <div>
                     <p className="text-sm text-muted-foreground">Vehicle ID</p>
                     <p className="font-semibold">{workOrder.vehicle}</p>
@@ -111,9 +111,9 @@ export default function PrintWorkOrderPage() {
             </div>
 
              {/* Problem Description */}
-            <div className="mb-8">
+            <div className="mb-6">
                  <h3 className="font-semibold text-base mb-2">Reported Problem</h3>
-                 <div className="text-sm p-4 bg-muted rounded-lg">{workOrder.problem}</div>
+                 <div className="text-sm p-3 bg-muted rounded-lg border">{workOrder.problem}</div>
             </div>
 
             {/* Parts */}
@@ -144,7 +144,7 @@ export default function PrintWorkOrderPage() {
             </div>
 
             {/* Labor */}
-             <div className="mb-8">
+             <div className="mb-6">
                 <h3 className="font-semibold text-base mb-2">Labor & Services</h3>
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
