@@ -105,7 +105,7 @@ export default function AdminImportPage() {
               Select your prepared CSV file to begin the import process.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6 flex flex-col justify-between">
+          <CardContent className="space-y-6 flex flex-col">
             <div className="space-y-2">
               <Label>CSV File</Label>
               {file ? (
@@ -146,7 +146,7 @@ export default function AdminImportPage() {
                 </div>
               )}
             </div>
-            <Button className="w-full" disabled={!file} onClick={handleImport} size="lg">
+            <Button className="w-full mt-auto" disabled={!file} onClick={handleImport} size="lg">
               <Import className="mr-2" />
               Import Assets
             </Button>
