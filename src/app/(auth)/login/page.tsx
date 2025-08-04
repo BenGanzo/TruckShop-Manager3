@@ -40,23 +40,28 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // 2. Verify the company ID and user's membership
+      // 2. Verify the company ID by finding the company document
       const companyQuery = query(collection(db, 'mainCompanies'), where('companyId', '==', companyId.toLowerCase()));
       const companySnapshot = await getDocs(companyQuery);
 
       if (companySnapshot.empty) {
         throw new Error("Invalid Company ID.");
       }
-
+      
+      // 3. Verify the user is part of that company's `users` subcollection
       const companyDoc = companySnapshot.docs[0];
       const userDocRef = doc(db, 'mainCompanies', companyDoc.id, 'users', user.uid);
       const userDoc = await getDoc(userDocRef);
 
       if (!userDoc.exists()) {
-        throw new Error("You are not a member of this company.");
+        throw new Error("You are not authorized to access this company.");
       }
 
-      // 3. If all checks pass, redirect to dashboard
+      // 4. If all checks pass, redirect to dashboard
+      toast({
+        title: 'Login Successful',
+        description: 'Welcome back!',
+      });
       router.push('/dashboard');
 
     } catch (error: any) {
@@ -96,6 +101,7 @@ export default function LoginPage() {
               required 
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
+              autoCapitalize="none"
             />
           </div>
           <div className="grid gap-2">

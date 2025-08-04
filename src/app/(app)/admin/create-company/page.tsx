@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore, doc, setDoc, collection, writeBatch } from 'firebase/firestore';
+import { getFirestore, doc, collection, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,29 +63,28 @@ export default function CreateCompanyPage() {
 
     try {
       // Create user in Firebase Auth
-      // Note: This creates the user in the main Firebase Auth project.
-      // You'll manage them, but they log in via the standard flow.
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
       // Use a batch write to create the company and the user document atomically
       const batch = writeBatch(db);
 
-      // 1. Create a document for the new company
-      const companyRef = doc(collection(db, 'mainCompanies'));
-      batch.set(companyRef, {
-        companyId: companyId,
+      // 1. Create a document for the new company in the `mainCompanies` collection.
+      // We use doc(collection(...)) to generate a new unique ID for the company document.
+      const companyDocRef = doc(collection(db, 'mainCompanies'));
+      batch.set(companyDocRef, {
+        companyId: companyId, // The user-friendly, readable ID
         companyName: companyName,
         adminUid: user.uid,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
       
-      // 2. Create the first user (admin) in the users subcollection
-      const userRef = doc(collection(companyRef, 'users'), user.uid);
-      batch.set(userRef, {
+      // 2. Create the first user (admin) in the `users` subcollection of the new company.
+      const userDocRef = doc(collection(companyDocRef, 'users'), user.uid);
+      batch.set(userDocRef, {
         email: user.email,
         role: 'admin', // Assign the 'admin' role
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
       
       // Commit the batch
