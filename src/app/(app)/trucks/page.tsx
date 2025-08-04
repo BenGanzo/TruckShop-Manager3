@@ -56,11 +56,14 @@ export default function TrucksPage() {
   const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
 
   const db = getFirestore(app);
-  const trucksCollection = collection(db, 'mainCompanies', companyId, 'trucks');
   
-  const [trucksSnapshot, loading, error] = useCollection(trucksCollection);
+  // Create a query against the collection.
+  const trucksCollectionRef = companyId ? collection(db, 'mainCompanies', companyId, 'trucks') : null;
+  const [trucksSnapshot, loading, error] = useCollection(trucksCollectionRef);
 
   const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+
+  const activeTrucks = trucks.filter((truck: any) => truck.isActive);
 
   if (userLoading) {
       return (
@@ -111,7 +114,7 @@ export default function TrucksPage() {
             </Button>
             <Button variant="ghost" className="justify-start gap-2 px-2">
               <Building className="h-4 w-4" />
-              Company Owned ({trucks.filter(t => t.owner === 'Company').length})
+              Company Owned ({trucks.filter((t: any) => t.owner === 'Company').length})
             </Button>
           </div>
         </div>
@@ -127,7 +130,7 @@ export default function TrucksPage() {
                   </CardDescription>
                 </div>
                 <div className="mt-2 text-sm font-medium text-right md:mt-0">
-                  Active count: {trucks.filter(t => t.status === 'Active').length}
+                  Active count: {activeTrucks.length}
                 </div>
               </div>
               <div className="relative mt-4">
@@ -178,21 +181,21 @@ export default function TrucksPage() {
                           <TableCell className="font-medium">{truck.id}</TableCell>
                           <TableCell>{truck.make}</TableCell>
                           <TableCell>{truck.model}</TableCell>
-                          <TableCell>{truck.licensePlate}</TableCell>
+                          <TableCell>{truck.plateNumber}</TableCell>
                           <TableCell>{truck.vin}</TableCell>
                           <TableCell>
                             <Badge
                               variant={
-                                truck.status === 'Active'
+                                truck.isActive
                                   ? 'active'
                                   : 'destructive'
                               }
                             >
-                              {truck.status}
+                              {truck.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
-                          <TableCell>{truck.tagsExpire}</TableCell>
-                          <TableCell>{truck.nextInspection}</TableCell>
+                          <TableCell>{truck.tagExpireOn}</TableCell>
+                          <TableCell>{truck.inspectionDueOn}</TableCell>
                         </TableRow>
                       ))
                     )}
@@ -206,4 +209,3 @@ export default function TrucksPage() {
     </div>
   );
 }
-
