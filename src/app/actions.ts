@@ -133,6 +133,29 @@ export async function updateTruck(companyId: string, truckId: string, truckData:
     }
 }
 
+export async function updateTrailer(companyId: string, trailerId: string, trailerData: Partial<any>): Promise<{ success: boolean; error?: string }> {
+    if (!companyId || !trailerId) {
+        return { success: false, error: 'Company ID and Trailer ID are required.' };
+    }
+
+    try {
+        const trailerDocRef = doc(db, 'mainCompanies', companyId, 'trailers', trailerId);
+        
+        const dataToUpdate = { ...trailerData };
+        delete dataToUpdate.id;
+
+        await updateDoc(trailerDocRef, {
+            ...dataToUpdate,
+            updatedAt: serverTimestamp(),
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error updating trailer:', error);
+        return { success: false, error: 'Failed to update the trailer in the database.' };
+    }
+}
+
 export async function updateCompany(companyId: string, companyData: any): Promise<{ success: boolean; error?: string }> {
     if (!companyId) {
         return { success: false, error: 'Company ID is required.' };
@@ -411,17 +434,19 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     // 2. Create user document in Firestore subcollection
     const userDocRef = doc(db, 'mainCompanies', companyId, 'users', userRecord.uid);
     
-    const dataToSet: User = {
+    const dataToSet: Omit<User, 'createdAt' | 'updatedAt'> = {
         id: userRecord.uid,
         email: userData.email,
         firstName: userData.firstName,
         lastName: userData.lastName,
         role: userData.role,
         isActive: true,
-        createdAt: serverTimestamp(),
     };
 
-    await setDoc(userDocRef, dataToSet);
+    await setDoc(userDocRef, {
+        ...dataToSet,
+        createdAt: serverTimestamp(),
+    });
 
     return { success: true };
   } catch (error: any) {
