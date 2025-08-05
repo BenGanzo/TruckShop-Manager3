@@ -59,6 +59,7 @@ export default function DashboardPage() {
   const [user, userLoading] = useAuthState(auth);
   const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
   const db = getFirestore(app);
+  const DEFAULT_TAX_RATE = 8.25 / 100; // 8.25%
 
   // Data Hooks
   const [trucksSnapshot, trucksLoading] = useCollection(companyId ? collection(db, 'mainCompanies', companyId, 'trucks') : null);
@@ -78,7 +79,9 @@ export default function DashboardPage() {
 
     const inventoryValue = catalogSnapshot?.docs.reduce((sum, doc) => {
         const part = doc.data() as CatalogPart;
-        return sum + (part.cost * part.quantity);
+        const cost = part.cost * part.quantity;
+        const tax = part.isTaxable ? cost * DEFAULT_TAX_RATE : 0;
+        return sum + cost + tax;
     }, 0) || 0;
 
     return {
@@ -126,7 +129,7 @@ export default function DashboardPage() {
         <StatCard 
             title="Inventory Value"
             value={`$${metrics.inventoryValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
-            subtext="Value of all parts"
+            subtext="Value of all parts including tax"
             icon={Archive}
             isLoading={isLoading}
         />
