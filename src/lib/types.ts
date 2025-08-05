@@ -63,6 +63,19 @@ export interface Truck {
     ownerId?: string;
 }
 
+export interface Trailer {
+    id: string;
+    isActive: boolean;
+    trailerType?: string;
+    make?: string;
+    makeYear?: string;
+    model?: string;
+    vin?: string;
+    plateNumber?: string;
+    state?: string;
+}
+
+
 export interface Owner {
   id: string;
   ownerName: string;
