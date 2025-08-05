@@ -34,7 +34,7 @@ const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (ADMIN_EMAILS.includes(email)) {
       return 'angulo-transportation';
   }
-  const domain = email.split('@[1]');
+  const domain = email.split('@')[1];
   return domain ? domain.split('.')[0] : '';
 };
 
