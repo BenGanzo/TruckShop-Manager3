@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ArrowLeft, CalendarIcon, Lock, Loader2 } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Lock, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import {
@@ -52,6 +52,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore, query } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
 import type { WorkOrder } from '@/lib/types';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 
 // Helper function to derive companyId from email
@@ -177,20 +178,60 @@ export default function CreateWorkOrderPage() {
                   control={form.control}
                   name="vehicleId"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Vehicle</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={trucksLoading}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={trucksLoading ? "Loading assets..." : "Select asset"} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {trucks.map(truck => (
-                            <SelectItem key={truck.id} value={truck.id}>{truck.id} - {truck.make} {truck.model}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              className={cn(
+                                "w-full justify-between",
+                                !field.value && "text-muted-foreground"
+                              )}
+                              disabled={trucksLoading}
+                            >
+                              {trucksLoading ? "Loading assets..." : 
+                                field.value
+                                ? trucks.find(
+                                    (truck) => truck.id === field.value
+                                  )?.id
+                                : "Select asset"}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-full p-0">
+                          <Command>
+                            <CommandInput placeholder="Search vehicle..." />
+                            <CommandList>
+                              <CommandEmpty>No vehicle found.</CommandEmpty>
+                              <CommandGroup>
+                                {trucks.map((truck) => (
+                                  <CommandItem
+                                    value={`${truck.id} ${truck.make} ${truck.model}`}
+                                    key={truck.id}
+                                    onSelect={() => {
+                                      form.setValue("vehicleId", truck.id)
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        truck.id === field.value
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    {truck.id} - {truck.make} {truck.model}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
