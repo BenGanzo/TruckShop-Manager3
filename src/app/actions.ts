@@ -3,9 +3,18 @@
 
 import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplier, PurchaseOrder } from '@/lib/types';
+import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplier, PurchaseOrder, User } from '@/lib/types';
 
 const db = getFirestore(app);
+
+// NOTE: This is a special server-side instance of the Auth SDK.
+// It is used for administrative tasks like creating users.
+// It's different from the client-side `auth` from `lib/firebase.ts`.
+import { getAuth } from 'firebase-admin/auth';
+import { adminApp } from '@/lib/firebase-admin';
+
+const adminAuth = getAuth(adminApp);
+
 
 export async function getPartRecommendations(input: any) {
     // Placeholder for actual AI call
@@ -381,4 +390,49 @@ export async function addPurchaseOrder(companyId: string, poData: Omit<PurchaseO
         console.error('Error adding purchase order:', error);
         return { success: false, error: error.message };
     }
+}
+
+export async function addUser(companyId: string, userData: any): Promise<{ success: boolean; error?: string; }> {
+  if (!companyId) {
+    return { success: false, error: 'Company ID is required.' };
+  }
+  if (!userData.email || !userData.password) {
+    return { success: false, error: 'Email and password are required.' };
+  }
+
+  try {
+    // 1. Create user in Firebase Authentication
+    const userRecord = await adminAuth.createUser({
+      email: userData.email,
+      password: userData.password,
+      displayName: `${userData.firstName} ${userData.lastName}`,
+    });
+
+    // 2. Create user document in Firestore subcollection
+    const userDocRef = doc(db, 'mainCompanies', companyId, 'users', userRecord.uid);
+    
+    const dataToSet: User = {
+        id: userRecord.uid,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: userData.role,
+        isActive: true,
+        createdAt: serverTimestamp(),
+    };
+
+    await setDoc(userDocRef, dataToSet);
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error adding user:", error);
+    // Provide a more user-friendly error message
+    let errorMessage = 'An unknown error occurred.';
+    if (error.code === 'auth/email-already-exists') {
+        errorMessage = 'This email is already in use by another account.';
+    } else if (error.code === 'auth/invalid-password') {
+        errorMessage = 'The password must be at least 6 characters long.';
+    }
+    return { success: false, error: errorMessage };
+  }
 }

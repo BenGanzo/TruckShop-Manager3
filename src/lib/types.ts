@@ -166,3 +166,14 @@ export interface PurchaseOrder {
     createdAt: any;
     updatedAt?: any;
 }
+
+export interface User {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    isActive: boolean;
+    createdAt: any;
+    updatedAt?: any;
+}
