@@ -3,7 +3,7 @@
 
 import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Asset, Owner, Truck, WorkOrder } from '@/lib/types';
+import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor } from '@/lib/types';
 
 const db = getFirestore(app);
 
@@ -261,5 +261,42 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
     } catch (error: any) {
         console.error('Error adding work order:', error);
         return { success: false, error: 'Failed to save the work order to the database.' };
+    }
+}
+
+export async function addCatalogPart(companyId: string, partData: Omit<CatalogPart, 'id'>): Promise<{ success: boolean; error?: string }> {
+    if (!companyId) return { success: false, error: 'Company ID is required.' };
+    
+    try {
+        const catalogRef = collection(db, 'mainCompanies', companyId, 'catalog');
+        const partDocRef = doc(catalogRef, partData.partId);
+
+        await setDoc(partDocRef, {
+            ...partData,
+            type: 'part',
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+export async function addCatalogLabor(companyId: string, laborData: Omit<CatalogLabor, 'id'>): Promise<{ success: boolean; error?: string }> {
+    if (!companyId) return { success: false, error: 'Company ID is required.' };
+
+    try {
+        const catalogRef = collection(db, 'mainCompanies', companyId, 'catalog');
+        const laborDocRef = doc(catalogRef); // Auto-generate ID
+
+        await setDoc(laborDocRef, {
+            ...laborData,
+            id: laborDocRef.id,
+            type: 'labor',
+            createdAt: serverTimestamp(),
+        });
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
     }
 }

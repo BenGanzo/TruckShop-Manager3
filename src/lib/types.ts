@@ -93,3 +93,24 @@ export interface WorkOrder {
   createdAt: Date;
   updatedAt?: Date;
 }
+
+export interface CatalogPart {
+    id: string;
+    partId: string;
+    name: string;
+    quantity: number;
+    cost: number;
+    type: 'part';
+}
+
+export interface CatalogLabor {
+    id: string;
+    description: string;
+    defaultHours: number;
+    defaultRate: number;
+    hasPmRule: boolean;
+    pmIntervalMiles?: number;
+    pmIntervalDays?: number;
+    kit?: { partId: string; quantity: number }[];
+    type: 'labor';
+}
