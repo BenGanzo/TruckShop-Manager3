@@ -3,8 +3,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { User } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import {
   LayoutGrid,
   Wrench,
@@ -20,6 +21,7 @@ import {
   UserCircle,
   TruckIcon,
   Settings,
+  LogOut,
 } from 'lucide-react';
 
 import {
@@ -33,6 +35,8 @@ import {
   SidebarGroupLabel,
 } from '@/components/ui/sidebar';
 import { Separator } from '@/components/ui/separator';
+import { auth } from '@/lib/firebase';
+import { Button } from '../ui/button';
 
 const RectangleHorizontal = () => (
   <svg
@@ -57,9 +61,19 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user }: AppSidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (path: string) => {
     return pathname === path || pathname.startsWith(path + '/');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      router.push('/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
@@ -232,7 +246,7 @@ export function AppSidebar({ user }: AppSidebarProps) {
       </SidebarContent>
       <SidebarFooter>
         <Separator className="my-2 bg-sidebar-border" />
-        <div className="p-4">
+        <div className="p-4 space-y-4">
           <div className="flex items-center gap-3">
             <UserCircle className="w-10 h-10 text-sidebar-foreground" />
             <div className="overflow-hidden">
@@ -240,6 +254,10 @@ export function AppSidebar({ user }: AppSidebarProps) {
               <p className="text-xs text-sidebar-foreground/70 truncate">{user?.email}</p>
             </div>
           </div>
+          <Button variant="outline" size="sm" className="w-full text-sidebar-primary-foreground bg-sidebar-primary hover:bg-sidebar-primary/90" onClick={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
         </div>
       </SidebarFooter>
     </>
