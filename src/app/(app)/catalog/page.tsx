@@ -28,10 +28,11 @@ import { AddCatalogItemDialog } from '@/components/add-catalog-item-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
 
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (!email) return '';
-  if (email === 'ganzobenjamin1301@gmail.com') return 'angulo-transportation';
+  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
   const domain = email.split('@')[1];
   return domain ? domain.split('.')[0] : '';
 };

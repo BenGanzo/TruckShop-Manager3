@@ -22,16 +22,14 @@ import { auth } from '@/lib/firebase';
 import type { Asset } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
+
 // Helper function to derive companyId from email
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (!email) return '';
-  // This is a placeholder logic. In a real app, you'd get this from user claims or a dedicated field.
-  // For "ganzobenjamin1301@gmail.com", this will not produce "angulo-transportation".
-  // Let's hardcode it for this specific user for now to ensure it works.
-  if (email === 'ganzobenjamin1301@gmail.com') {
+  if (ADMIN_EMAILS.includes(email)) {
     return 'angulo-transportation';
   }
-  // Fallback logic
   const domain = email.split('@')[1];
   return domain ? domain.split('.')[0] : '';
 };

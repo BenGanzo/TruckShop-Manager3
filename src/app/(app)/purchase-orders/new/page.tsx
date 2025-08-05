@@ -28,9 +28,11 @@ import type { Supplier, CatalogPart } from '@/lib/types';
 import { addPurchaseOrder } from '@/app/actions';
 import { Checkbox } from '@/components/ui/checkbox';
 
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
+
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (!email) return '';
-  if (email === 'ganzobenjamin1301@gmail.com') return 'angulo-transportation';
+  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
   const domain = email.split('@')[1];
   return domain ? domain.split('.')[0] : '';
 };

@@ -32,10 +32,12 @@ import {
 } from '@/components/ui/form';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
 
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
+
 // Helper function to derive companyId from email
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (!email) return '';
-  if (email === 'ganzobenjamin1301@gmail.com') {
+  if (ADMIN_EMAILS.includes(email)) {
     return 'angulo-transportation';
   }
   const domain = email.split('@')[1];
