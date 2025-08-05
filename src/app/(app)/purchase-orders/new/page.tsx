@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getFirestore, query, orderBy } from 'firebase/firestore';
+import { collection, getFirestore, query } from 'firebase/firestore';
 import { app, auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -26,6 +26,7 @@ import { ArrowLeft, CalendarIcon, Loader2, PlusCircle, Trash2 } from 'lucide-rea
 import Link from 'next/link';
 import type { Supplier, CatalogPart } from '@/lib/types';
 import { addPurchaseOrder } from '@/app/actions';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (!email) return '';
@@ -60,6 +61,7 @@ export default function CreatePurchaseOrderPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
   const db = getFirestore(app);
+  const [isTaxable, setIsTaxable] = React.useState(true);
 
   // Data fetching
   const suppliersRef = companyId ? collection(db, 'mainCompanies', companyId, 'suppliers') : null;
@@ -86,6 +88,14 @@ export default function CreatePurchaseOrderPage() {
     name: "items",
   });
 
+  React.useEffect(() => {
+    if (!isTaxable) {
+      form.setValue('taxRate', 0);
+    } else {
+      form.setValue('taxRate', 8.25); // or a saved default
+    }
+  }, [isTaxable, form]);
+
   const [partToAdd, setPartToAdd] = React.useState('');
 
   const handleAddPart = () => {
@@ -103,10 +113,10 @@ export default function CreatePurchaseOrderPage() {
   const { subtotal, taxAmount, grandTotal } = React.useMemo(() => {
     const itemsTotal = watchItems.reduce((sum, item) => sum + (item.quantity * item.cost), 0);
     const subtotal = itemsTotal + watchShipping;
-    const taxAmount = itemsTotal * (watchTaxRate / 100);
+    const taxAmount = isTaxable ? (itemsTotal * (watchTaxRate / 100)) : 0;
     const grandTotal = subtotal + taxAmount;
     return { subtotal, taxAmount, grandTotal };
-  }, [watchItems, watchShipping, watchTaxRate]);
+  }, [watchItems, watchShipping, watchTaxRate, isTaxable]);
 
   const onSubmit = async (data: POFormData) => {
     if (!companyId) {
@@ -258,10 +268,16 @@ export default function CreatePurchaseOrderPage() {
                       <FormLabel>Shipping:</FormLabel>
                       <FormField control={form.control} name="shippingCost" render={({ field }) => (<Input type="number" className="h-8 w-24" {...field} />)} />
                     </div>
-                    <div className="flex justify-between items-center">
-                      <FormLabel>Tax (%):</FormLabel>
-                      <FormField control={form.control} name="taxRate" render={({ field }) => (<Input type="number" step="0.01" className="h-8 w-24" {...field} />)} />
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="isTaxable" checked={isTaxable} onCheckedChange={(checked) => setIsTaxable(Boolean(checked))} />
+                        <label htmlFor="isTaxable" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">Apply Tax?</label>
                     </div>
+                    {isTaxable && (
+                        <div className="flex justify-between items-center pl-6">
+                        <FormLabel>Tax (%):</FormLabel>
+                        <FormField control={form.control} name="taxRate" render={({ field }) => (<Input type="number" step="0.01" className="h-8 w-24" {...field} />)} />
+                        </div>
+                    )}
                   </div>
                   <div className="border-t pt-4 space-y-2">
                     <div className="flex justify-between"><span>Tax Amount:</span><span>${taxAmount.toFixed(2)}</span></div>
