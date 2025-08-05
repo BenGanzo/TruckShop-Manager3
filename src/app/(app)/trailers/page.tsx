@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { assignTrailersToOwner } from '@/app/actions';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 // Helper function to derive companyId from email
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
@@ -35,6 +36,7 @@ const getCompanyIdFromEmail = (email: string | null | undefined) => {
 
 export default function TrailersPage() {
   const [user, userLoading] = useAuthState(auth);
+  const router = useRouter();
   const { toast } = useToast();
   const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
   const db = getFirestore(app);
@@ -59,15 +61,24 @@ export default function TrailersPage() {
       trailersByGroup = trailers.filter(t => t.ownerId === selectedGroup);
     }
     
-    if (!searchQuery) return trailersByGroup;
+    if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        // Prioritize ID matches that start with the query
+        const idStartsWithMatch = trailersByGroup.filter((trailer: any) => trailer.id?.toLowerCase().startsWith(query));
+        if (idStartsWithMatch.length > 0) {
+            return idStartsWithMatch;
+        }
 
-    const query = searchQuery.toLowerCase();
-    return trailersByGroup.filter(trailer => 
-        trailer.id?.toLowerCase().includes(query) ||
-        trailer.make?.toLowerCase().includes(query) ||
-        trailer.model?.toLowerCase().includes(query) ||
-        trailer.vin?.toLowerCase().includes(query)
-    );
+        // Fallback to including any match
+        return trailersByGroup.filter(trailer => 
+            trailer.id?.toLowerCase().includes(query) ||
+            trailer.make?.toLowerCase().includes(query) ||
+            trailer.model?.toLowerCase().includes(query) ||
+            trailer.vin?.toLowerCase().includes(query)
+        );
+    }
+
+    return trailersByGroup;
   }, [trailers, searchQuery, selectedGroup]);
 
   const activeTrailersCount = useMemo(() => trailers.filter(t => t.isActive).length, [trailers]);
@@ -103,6 +114,10 @@ export default function TrailersPage() {
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
     }
+  };
+  
+  const handleRowDoubleClick = (trailerId: string) => {
+    router.push(`/trailers/${trailerId}`);
   };
 
   const GroupButton = ({ id, name, icon, count, selected, onClick }: any) => (
@@ -238,8 +253,15 @@ export default function TrailersPage() {
                       ))
                     ) : (
                       filteredTrailers.map((trailer) => (
-                        <TableRow key={trailer.id} data-state={selectedTrailers.has(trailer.id) && "selected"}>
-                          <TableCell><Checkbox onCheckedChange={(checked) => handleSelectTrailer(trailer.id, Boolean(checked))} checked={selectedTrailers.has(trailer.id)} /></TableCell>
+                        <TableRow 
+                            key={trailer.id}
+                            data-state={selectedTrailers.has(trailer.id) && "selected"}
+                            onDoubleClick={() => handleRowDoubleClick(trailer.id)}
+                            className="cursor-pointer"
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox onCheckedChange={(checked) => handleSelectTrailer(trailer.id, Boolean(checked))} checked={selectedTrailers.has(trailer.id)} />
+                          </TableCell>
                           <TableCell className="font-medium">
                              <Button variant="link" asChild className="p-0 h-auto font-medium"><Link href={`/trailers/${trailer.id}`}>{trailer.id}</Link></Button>
                           </TableCell>
@@ -251,7 +273,7 @@ export default function TrailersPage() {
                               {trailer.isActive ? 'Active' : 'Inactive'}
                             </Badge>
                           </TableCell>
-                          <TableCell>
+                          <TableCell onClick={(e) => e.stopPropagation()}>
                             <Button asChild variant="ghost" size="icon">
                               <Link href={`/trailers/${trailer.id}`}>
                                 <Pencil className="h-4 w-4" />
