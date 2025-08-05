@@ -38,7 +38,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
@@ -51,7 +51,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore, query } from 'firebase/firestore';
 import { auth, app } from '@/lib/firebase';
-import type { WorkOrder } from '@/lib/types';
+import type { WorkOrder, CatalogPart, CatalogLabor } from '@/lib/types';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 
@@ -65,6 +65,21 @@ const getCompanyIdFromEmail = (email: string | null | undefined) => {
   return domain ? domain.split('.')[0] : '';
 };
 
+const partItemSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  partId: z.string(),
+  quantity: z.coerce.number().min(1),
+  cost: z.coerce.number(),
+  isTaxable: z.boolean().optional(),
+});
+
+const laborItemSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  hours: z.coerce.number().min(0.1),
+  rate: z.coerce.number(),
+});
 
 const workOrderSchema = z.object({
   vehicleId: z.string().min(1, 'Vehicle is required.'),
@@ -76,9 +91,9 @@ const workOrderSchema = z.object({
   currentMileage: z.coerce.number().optional(),
   nextServiceMiles: z.coerce.number().optional(),
   status: z.string().default('open'),
-  // parts: z.array(z.any()).default([]), // Placeholder for parts
-  // labor: z.array(z.any()).default([]), // Placeholder for labor
-  // taxRate: z.number().default(8.25),
+  parts: z.array(partItemSchema).default([]),
+  labor: z.array(laborItemSchema).default([]),
+  taxRate: z.coerce.number().default(8.25), // Default tax rate, can be adjusted
 });
 
 type WorkOrderFormData = z.infer<typeof workOrderSchema>;
@@ -97,20 +112,51 @@ export default function CreateWorkOrderPage() {
 
   const mechanicsCollectionRef = companyId ? query(collection(db, 'mainCompanies', companyId, 'users'), where => where('role', '==', 'mechanic')) : null;
   const [mechanicsSnapshot, mechanicsLoading] = useCollection(mechanicsCollectionRef);
+  
+  const catalogRef = companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null;
+  const [catalogSnapshot, catalogLoading] = useCollection(catalogRef);
 
   const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
   const mechanics = mechanicsSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+  const catalogItems = catalogSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+  
+  const catalogParts: CatalogPart[] = React.useMemo(() => catalogItems.filter(item => item.type === 'part'), [catalogItems]);
+  const catalogLabor: CatalogLabor[] = React.useMemo(() => catalogItems.filter(item => item.type === 'labor'), [catalogItems]);
 
   const form = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: {
       status: 'open',
       problemDescription: '',
-      // parts: [],
-      // labor: [],
-      // taxRate: 8.25,
+      parts: [],
+      labor: [],
+      taxRate: 8.25,
     },
   });
+
+  const { fields: partFields, append: appendPart, remove: removePart, update: updatePart } = useFieldArray({
+    control: form.control,
+    name: "parts",
+  });
+
+  const { fields: laborFields, append: appendLabor, remove: removeLabor, update: updateLabor } = useFieldArray({
+    control: form.control,
+    name: "labor",
+  });
+  
+  const watchedParts = form.watch('parts');
+  const watchedLabor = form.watch('labor');
+  const watchedTaxRate = form.watch('taxRate');
+
+  const { partsTotal, laborTotal, taxAmount, grandTotal } = React.useMemo(() => {
+    const partsTotal = watchedParts.reduce((sum, item) => sum + item.quantity * item.cost, 0);
+    const laborTotal = watchedLabor.reduce((sum, item) => sum + item.hours * item.rate, 0);
+    const taxablePartsTotal = watchedParts.filter(p => p.isTaxable).reduce((sum, item) => sum + item.quantity * item.cost, 0);
+    const taxAmount = taxablePartsTotal * (watchedTaxRate / 100);
+    const grandTotal = partsTotal + laborTotal + taxAmount;
+    return { partsTotal, laborTotal, taxAmount, grandTotal };
+  }, [watchedParts, watchedLabor, watchedTaxRate]);
+  
   
   const handleSave = async (data: WorkOrderFormData) => {
     if (!companyId) {
@@ -123,7 +169,12 @@ export default function CreateWorkOrderPage() {
     }
     setIsLoading(true);
 
-    const result = await addWorkOrder(companyId, data);
+    const fullData = {
+      ...data,
+      total: grandTotal,
+    };
+
+    const result = await addWorkOrder(companyId, fullData);
     
     setIsLoading(false);
     if (result.success && result.workOrderId) {
@@ -407,7 +458,19 @@ export default function CreateWorkOrderPage() {
               problemDescription={form.watch('problemDescription')}
               onDescriptionChange={(value) => form.setValue('problemDescription', value, { shouldValidate: true })}
             />
-            <WorkOrderPartsLaborForm />
+            <WorkOrderPartsLaborForm
+                parts={partFields}
+                labor={laborFields}
+                appendPart={appendPart}
+                removePart={removePart}
+                updatePart={updatePart}
+                appendLabor={appendLabor}
+                removeLabor={removeLabor}
+                updateLabor={updateLabor}
+                catalogParts={catalogParts}
+                catalogLabor={catalogLabor}
+                isLoading={catalogLoading}
+            />
 
           </div>
 
@@ -445,25 +508,32 @@ export default function CreateWorkOrderPage() {
                       <div className="space-y-2 border-t pt-4">
                           <div className="flex justify-between">
                               <span>Parts Total:</span>
-                              <span>$0.00</span>
+                              <span>${partsTotal.toFixed(2)}</span>
                           </div>
                            <div className="flex justify-between">
                               <span>Labor Total:</span>
-                              <span>$0.00</span>
+                              <span>${laborTotal.toFixed(2)}</span>
                           </div>
                            <div className="flex justify-between items-center">
                               <span>Tax:</span>
-                              <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2">
+                                  <FormField
+                                      control={form.control}
+                                      name="taxRate"
+                                      render={({ field }) => (
+                                          <Input type="number" className="h-7 w-16 text-right" {...field} />
+                                      )}
+                                  />
                                   <span>%</span>
-                                  <span>$0.00</span>
-                              </div>
+                                  <span>${taxAmount.toFixed(2)}</span>
+                                </div>
                           </div>
                       </div>
                       
                       <div className="border-t pt-4">
                           <div className="flex justify-between font-bold text-lg">
                               <span>Grand Total:</span>
-                              <span>$0.00</span>
+                              <span>${grandTotal.toFixed(2)}</span>
                           </div>
                       </div>
                   </CardContent>
