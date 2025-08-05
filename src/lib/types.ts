@@ -114,6 +114,7 @@ export interface CatalogPart {
     name: string;
     quantity: number;
     cost: number;
+    isTaxable?: boolean;
     type: 'part';
 }
 

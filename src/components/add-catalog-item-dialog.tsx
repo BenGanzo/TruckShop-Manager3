@@ -37,6 +37,7 @@ const partSchema = z.object({
   partId: z.string().min(1, 'Part ID/SKU is required.'),
   quantity: z.coerce.number().min(0, 'Quantity cannot be negative.'),
   cost: z.coerce.number().min(0, 'Cost cannot be negative.'),
+  isTaxable: z.boolean().default(false),
 });
 
 const laborSchema = z.object({
@@ -79,7 +80,7 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
 
   const partForm = useForm<z.infer<typeof partSchema>>({
     resolver: zodResolver(partSchema),
-    defaultValues: { name: '', partId: '', quantity: 0, cost: 0 },
+    defaultValues: { name: '', partId: '', quantity: 0, cost: 0, isTaxable: true },
   });
 
   const laborForm = useForm<z.infer<typeof laborSchema>>({
@@ -158,6 +159,7 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                 <FormField control={form.control} name="partId" render={({ field }) => ( <FormItem> <FormLabel>Part ID / SKU</FormLabel> <FormControl><Input placeholder="e.g., FIL-001" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                 <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem> <FormLabel>On Hand</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
                 <FormField control={form.control} name="cost" render={({ field }) => ( <FormItem> <FormLabel>Cost</FormLabel> <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                 <FormField control={partForm.control} name="isTaxable" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"> <div className="space-y-0.5"> <FormLabel>Taxable?</FormLabel> </div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )} />
               </>
             ) : (
               <>
