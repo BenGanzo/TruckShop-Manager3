@@ -3,7 +3,7 @@
 
 import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor } from '@/lib/types';
+import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplier, PurchaseOrder } from '@/lib/types';
 
 const db = getFirestore(app);
 
@@ -323,5 +323,62 @@ export async function addCatalogLabor(companyId: string, laborData: Omit<Catalog
         return { success: true };
     } catch (e: any) {
         return { success: false, error: e.message };
+    }
+}
+
+export async function addSupplier(companyId: string, supplierData: Omit<Supplier, 'id' | 'createdAt'>): Promise<{ success: boolean; error?: string; supplierId?: string }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+    try {
+        const suppliersRef = collection(db, 'mainCompanies', companyId, 'suppliers');
+        const newDocRef = await addDoc(suppliersRef, {
+            ...supplierData,
+            createdAt: serverTimestamp(),
+        });
+        await updateDoc(newDocRef, { id: newDocRef.id });
+        return { success: true, supplierId: newDocRef.id };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function getNextPurchaseOrderId(companyId: string): Promise<string> {
+    const poRef = collection(db, 'mainCompanies', companyId, 'purchaseOrders');
+    const q = query(poRef, orderBy('numericId', 'desc'), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return 'PO-1001';
+    }
+    const lastPO = querySnapshot.docs[0].data();
+    const lastId = lastPO.numericId || 1000;
+    const nextId = lastId + 1;
+    return `PO-${nextId}`;
+}
+
+export async function addPurchaseOrder(companyId: string, poData: Omit<PurchaseOrder, 'id' | 'numericId'>): Promise<{ success: boolean; error?: string; purchaseOrderId?: string }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+    try {
+        const poRef = collection(db, 'mainCompanies', companyId, 'purchaseOrders');
+        const poId = await getNextPurchaseOrderId(companyId);
+        const numericId = parseInt(poId.split('-')[1]);
+
+        const poDocRef = doc(poRef, poId);
+
+        const dataToSet: PurchaseOrder = {
+            ...poData,
+            id: poId,
+            numericId: numericId,
+            createdAt: serverTimestamp(),
+        };
+
+        await setDoc(poDocRef, dataToSet);
+        return { success: true, purchaseOrderId: poId };
+    } catch (error: any) {
+        console.error('Error adding purchase order:', error);
+        return { success: false, error: error.message };
     }
 }

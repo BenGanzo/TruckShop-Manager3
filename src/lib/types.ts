@@ -128,3 +128,40 @@ export interface CatalogLabor {
     kit?: { partId: string; quantity: number }[];
     type: 'labor';
 }
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactFirstName?: string;
+  contactLastName?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  website?: string;
+  createdAt: any;
+  updatedAt?: any;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    numericId: number;
+    supplierId: string;
+    supplierName: string;
+    status: 'draft' | 'ordered' | 'completed' | 'cancelled';
+    issueDate: Date;
+    expectedDeliveryDate?: Date;
+    items: {
+        partId: string;
+        name: string;
+        quantity: number;
+        cost: number;
+    }[];
+    shippingCost: number;
+    taxRate: number;
+    total: number;
+    createdAt: any;
+    updatedAt?: any;
+}
