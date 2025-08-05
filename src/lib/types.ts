@@ -73,6 +73,7 @@ export interface Trailer {
     vin?: string;
     plateNumber?: string;
     state?: string;
+    ownerId?: string;
 }
 
 

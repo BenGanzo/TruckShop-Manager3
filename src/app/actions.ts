@@ -168,6 +168,31 @@ export async function assignTrucksToOwner(companyId: string, truckIds: string[],
     }
 }
 
+export async function assignTrailersToOwner(companyId: string, trailerIds: string[], ownerId: string): Promise<{ success: boolean; error?: string }> {
+    if (!companyId || !trailerIds || trailerIds.length === 0 || !ownerId) {
+        return { success: false, error: 'Invalid arguments provided for assignment.' };
+    }
+
+    try {
+        const batch = writeBatch(db);
+        const companyRef = doc(db, 'mainCompanies', companyId);
+        const trailersCollectionRef = collection(companyRef, 'trailers');
+
+        trailerIds.forEach(trailerId => {
+            const trailerDocRef = doc(trailersCollectionRef, trailerId);
+            batch.update(trailerDocRef, { ownerId: ownerId });
+        });
+
+        await batch.commit();
+
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error assigning trailers to owner:', error);
+        return { success: false, error: 'Failed to update trailer assignments in the database.' };
+    }
+}
+
+
 export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>): Promise<{ success: boolean; error?: string; }> {
     if (!companyId) {
         return { success: false, error: 'Company ID is required.' };
