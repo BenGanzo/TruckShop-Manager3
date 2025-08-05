@@ -73,3 +73,23 @@ export interface Owner {
   address?: string;
   updatedAt?: any;
 }
+
+export interface WorkOrder {
+  id: string;
+  numericId: number;
+  vehicleId: string;
+  mechanicId: string;
+  problemDescription: string;
+  status: string;
+  arrivalDate?: Date;
+  departureDate?: Date;
+  currentMileage?: number;
+  nextServiceDate?: Date;
+  nextServiceMiles?: number;
+  parts?: any[]; // Replace 'any' with a 'Part' interface later
+  labor?: any[]; // Replace 'any' with a 'Labor' interface later
+  taxRate?: number;
+  total?: number;
+  createdAt: Date;
+  updatedAt?: Date;
+}

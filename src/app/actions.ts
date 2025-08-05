@@ -1,9 +1,9 @@
 
 'use server';
 
-import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Asset, Owner, Truck } from '@/lib/types';
+import type { Asset, Owner, Truck, WorkOrder } from '@/lib/types';
 
 const db = getFirestore(app);
 
@@ -213,5 +213,53 @@ export async function updateOwner(companyId: string, ownerId: string, ownerData:
     } catch (error: any) {
         console.error('Error updating owner:', error);
         return { success: false, error: 'Failed to update the owner in the database.' };
+    }
+}
+
+// Function to get the next Work Order ID
+async function getNextWorkOrderId(companyId: string): Promise<string> {
+    const workOrdersRef = collection(db, 'mainCompanies', companyId, 'workOrders');
+    const q = query(workOrdersRef, orderBy('numericId', 'desc'), limit(1));
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return 'WO-1001';
+    }
+
+    const lastWorkOrder = querySnapshot.docs[0].data();
+    const lastId = lastWorkOrder.numericId || 1000;
+    const nextId = lastId + 1;
+    return `WO-${nextId}`;
+}
+
+
+export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOrder, 'id' | 'numericId'>): Promise<{ success: boolean; error?: string; workOrderId?: string; }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+
+    try {
+        const companyRef = doc(db, 'mainCompanies', companyId);
+        const workOrdersCollectionRef = collection(companyRef, 'workOrders');
+        
+        const workOrderId = await getNextWorkOrderId(companyId);
+        const numericId = parseInt(workOrderId.split('-')[1]);
+
+        const newWorkOrderDocRef = doc(workOrdersCollectionRef, workOrderId);
+
+        const dataToSet = {
+            ...workOrderData,
+            id: workOrderId,
+            numericId: numericId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        };
+
+        await setDoc(newWorkOrderDocRef, dataToSet);
+
+        return { success: true, workOrderId: workOrderId };
+    } catch (error: any) {
+        console.error('Error adding work order:', error);
+        return { success: false, error: 'Failed to save the work order to the database.' };
     }
 }

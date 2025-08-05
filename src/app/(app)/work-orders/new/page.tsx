@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -27,7 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ArrowLeft, CalendarIcon, Lock } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Lock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import {
@@ -47,6 +46,24 @@ import { useToast } from '@/hooks/use-toast';
 import WorkOrderForm from '@/components/work-order-form';
 import WorkOrderPartsLaborForm from '@/components/work-order-parts-labor-form';
 import { useRouter } from 'next/navigation';
+import { addWorkOrder } from '@/app/actions';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, getFirestore, query } from 'firebase/firestore';
+import { auth, app } from '@/lib/firebase';
+import type { WorkOrder } from '@/lib/types';
+
+
+// Helper function to derive companyId from email
+const getCompanyIdFromEmail = (email: string | null | undefined) => {
+  if (!email) return '';
+  if (email === 'ganzobenjamin1301@gmail.com') {
+    return 'angulo-transportation';
+  }
+  const domain = email.split('@')[1];
+  return domain ? domain.split('.')[0] : '';
+};
+
 
 const workOrderSchema = z.object({
   vehicleId: z.string().min(1, 'Vehicle is required.'),
@@ -55,12 +72,12 @@ const workOrderSchema = z.object({
   arrivalDate: z.date().optional(),
   departureDate: z.date().optional(),
   nextServiceDate: z.date().optional(),
-  currentMileage: z.number().optional(),
-  nextServiceMiles: z.number().optional(),
+  currentMileage: z.coerce.number().optional(),
+  nextServiceMiles: z.coerce.number().optional(),
   status: z.string().default('open'),
-  parts: z.array(z.any()).default([]), // Placeholder for parts
-  labor: z.array(z.any()).default([]), // Placeholder for labor
-  taxRate: z.number().default(8.25),
+  // parts: z.array(z.any()).default([]), // Placeholder for parts
+  // labor: z.array(z.any()).default([]), // Placeholder for labor
+  // taxRate: z.number().default(8.25),
 });
 
 type WorkOrderFormData = z.infer<typeof workOrderSchema>;
@@ -70,28 +87,57 @@ export default function CreateWorkOrderPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
 
+  const [user, userLoading] = useAuthState(auth);
+  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const db = getFirestore(app);
+  
+  const trucksCollectionRef = companyId ? collection(db, 'mainCompanies', companyId, 'trucks') : null;
+  const [trucksSnapshot, trucksLoading] = useCollection(trucksCollectionRef);
+
+  const mechanicsCollectionRef = companyId ? query(collection(db, 'mainCompanies', companyId, 'users'), where => where('role', '==', 'mechanic')) : null;
+  const [mechanicsSnapshot, mechanicsLoading] = useCollection(mechanicsCollectionRef);
+
+  const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+  const mechanics = mechanicsSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+
   const form = useForm<WorkOrderFormData>({
     resolver: zodResolver(workOrderSchema),
     defaultValues: {
       status: 'open',
       problemDescription: '',
-      parts: [],
-      labor: [],
-      taxRate: 8.25,
+      // parts: [],
+      // labor: [],
+      // taxRate: 8.25,
     },
   });
   
   const handleSave = async (data: WorkOrderFormData) => {
-    // Placeholder for save logic
+    if (!companyId) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not identify your company.',
+      });
+      return;
+    }
     setIsLoading(true);
-    console.log('Form data:', data);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate async operation
-    toast({
-        title: 'Work Order Saved (Simulated)!',
-        description: 'The work order has been saved successfully.'
-    });
+
+    const result = await addWorkOrder(companyId, data);
+    
     setIsLoading(false);
-    // router.push('/work-orders'); // Optional redirect after save
+    if (result.success && result.workOrderId) {
+        toast({
+            title: 'Work Order Created!',
+            description: `Work Order ${result.workOrderId} has been created successfully.`
+        });
+        router.push(`/work-orders/${result.workOrderId}`);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Creation Failed',
+            description: result.error || 'An unknown error occurred.',
+        });
+    }
   };
 
   return (
@@ -123,7 +169,7 @@ export default function CreateWorkOrderPage() {
                 <CardTitle>Work Order Details</CardTitle>
                 <CardDescription>
                   Select a vehicle and describe the reported issue.
-                  <span className="block text-right font-mono text-sm text-muted-foreground">WO-1</span>
+                  <span className="block text-right font-mono text-sm text-muted-foreground">WO-NEW</span>
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-6 md:grid-cols-2">
@@ -133,15 +179,16 @@ export default function CreateWorkOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Vehicle</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={trucksLoading}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select asset" />
+                            <SelectValue placeholder={trucksLoading ? "Loading assets..." : "Select asset"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="truck-1">T-101</SelectItem>
-                          <SelectItem value="truck-2">T-102</SelectItem>
+                          {trucks.map(truck => (
+                            <SelectItem key={truck.id} value={truck.id}>{truck.id} - {truck.make} {truck.model}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -154,15 +201,16 @@ export default function CreateWorkOrderPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Assigned Mechanic</FormLabel>
-                       <Select onValueChange={field.onChange} defaultValue={field.value}>
+                       <Select onValueChange={field.onChange} defaultValue={field.value} disabled={mechanicsLoading}>
                         <FormControl>
                           <SelectTrigger>
-                             <SelectValue placeholder="Select a mechanic" />
+                             <SelectValue placeholder={mechanicsLoading ? "Loading users..." : "Select a mechanic"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                            <SelectItem value="mech-1">Benjamin G.</SelectItem>
-                            <SelectItem value="mech-2">John Doe</SelectItem>
+                            {mechanics.map((mech: any) => (
+                               <SelectItem key={mech.id} value={mech.id}>{mech.firstName} {mech.lastName}</SelectItem>
+                            ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -232,7 +280,7 @@ export default function CreateWorkOrderPage() {
                         <FormItem>
                           <FormLabel>Current Mileage</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                            <Input type="number" placeholder="0" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -274,7 +322,7 @@ export default function CreateWorkOrderPage() {
                         <FormItem>
                             <FormLabel>Next Service (Miles)</FormLabel>
                             <FormControl>
-                                <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                <Input type="number" placeholder="0" {...field} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -365,17 +413,6 @@ export default function CreateWorkOrderPage() {
                            <div className="flex justify-between items-center">
                               <span>Tax:</span>
                               <div className="flex items-center gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name="taxRate"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <Input type="number" {...field} className="w-20 h-8 text-right" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
                                   <span>%</span>
                                   <span>$0.00</span>
                               </div>
@@ -391,13 +428,14 @@ export default function CreateWorkOrderPage() {
                   </CardContent>
                   <CardContent className="flex flex-col gap-2">
                       <Button size="lg" className="w-full" type="submit" disabled={isLoading}>
-                           {isLoading ? 'Saving...' : 'Save Work Order'}
-                      </Button>
-                      <Button size="lg" variant="outline" className="w-full" type="button" onClick={form.handleSubmit((data) => {
-                          handleSave(data);
-                      })} disabled={isLoading}>
-                          <Lock className="mr-2 h-4 w-4" />
-                          Save and Go to WO
+                           {isLoading ? (
+                                <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Saving...
+                                </>
+                           ) : (
+                                'Save and Go to WO'
+                           )}
                       </Button>
                   </CardContent>
               </Card>
