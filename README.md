@@ -45,3 +45,53 @@ To get the project running locally, follow these steps:
     ```
 
 The application will be available at `http://localhost:9002`.
+
+---
+
+## Connecting to GitHub
+
+To store your code on GitHub, follow these steps:
+
+1.  **Create a new repository on GitHub:** Go to [GitHub](https://github.com/new) and create a new repository. Do **not** initialize it with a README, .gitignore, or license file.
+
+2.  **Initialize Git in your project:** Open your terminal in the project's root directory and run:
+    ```bash
+    git init -b main
+    ```
+
+3.  **Add and commit your files:**
+    ```bash
+    git add .
+    git commit -m "Initial commit"
+    ```
+
+4.  **Link your local repository to GitHub:**
+    ```bash
+    git remote add origin <your-github-repository-url>
+    ```
+
+5.  **Push your code to GitHub:**
+    ```bash
+    git push -u origin main
+    ```
+
+## Deploying to the Web
+
+This project is configured to be deployed with **Firebase App Hosting**.
+
+1.  **Install the Firebase CLI:** If you don't have it, install it globally.
+    ```bash
+    npm install -g firebase-tools
+    ```
+
+2.  **Log in to Firebase:**
+    ```bash
+    firebase login
+    ```
+
+3.  **Deploy your application:** Run the following command from your project's root directory.
+    ```bash
+    firebase deploy
+    ```
+
+Firebase will build and deploy your application. Once finished, it will give you a URL where you can access your live application.
