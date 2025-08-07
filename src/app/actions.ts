@@ -367,7 +367,7 @@ export async function addCatalogPart(companyId: string, partData: Omit<CatalogPa
         return { success: true };
 
     } catch (e: any) {
-        console.error('Error adding catalog part:', e);
+        return { success: false, error: 'PRUEBA_DE_ERROR_DEL_DIA_7_DE_AGOSTO' };
         // --- FIX 2: Return a clean, safe error message ---
         return { success: false, error: e.message };
     }
