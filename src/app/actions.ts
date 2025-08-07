@@ -376,7 +376,7 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
     } catch (e: any) {
         console.error('Error adding catalog part:', e);
         // Devolvemos el mensaje de error seguro y amigable
-        return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
+        return { success: false, error: e.message };
     }
 }
 
