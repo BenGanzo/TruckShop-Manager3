@@ -3,17 +3,31 @@
 
 import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
-import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplier, PurchaseOrder, User } from '@/lib/types';
-
-const db = getFirestore(app);
-
-// NOTE: This is a special server-side instance of the Auth SDK.
-// It is used for administrative tasks like creating users.
-// It's different from the client-side `auth` from `lib/firebase.ts`.
+import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplier, PurchaseOrder, User, Trailer } from '@/lib/types';
+import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
-import { adminApp } from '@/lib/firebase-admin';
+import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 
-const adminAuth = getAuth(adminApp);
+// Function to get admin services lazily and ensure singleton pattern
+function getAdminServices() {
+    if (admin.apps.length === 0) {
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+        if (!serviceAccount) {
+            throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
+        }
+        
+        // Replace escaped newlines before parsing
+        const cleanedServiceAccount = serviceAccount.replace(/\\n/g, '\n');
+        const parsedServiceAccount = JSON.parse(cleanedServiceAccount);
+
+        admin.initializeApp({
+            credential: admin.credential.cert(parsedServiceAccount),
+        });
+    }
+    const adminDb = getAdminFirestore();
+    const adminAuth = getAuth();
+    return { adminDb, adminAuth };
+}
 
 
 export async function getPartRecommendations(input: any) {
@@ -21,7 +35,7 @@ export async function getPartRecommendations(input: any) {
     console.log('Getting recommendations for:', input.problemDescription);
     // In a real app, you would import and call your Genkit flow here.
     // For now, returning a hardcoded success response.
-    const { workOrderPartRecommendation } = await import('@/ai/flows/work-order-part-recommendation');
+    const { workOrderPartRecommendation } = await import('@/ai/flows/work--order-part-recommendation');
 
     try {
         const result = await workOrderPartRecommendation(input);
@@ -41,11 +55,12 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
     throw new Error('No assets provided for import.');
   }
 
-  const batch = writeBatch(db);
+  const { adminDb } = getAdminServices();
+  const batch = adminDb.batch();
   let successCount = 0;
   let errorCount = 0;
 
-  const companyRef = doc(db, 'mainCompanies', companyId);
+  const companyRef = adminDb.collection('mainCompanies').doc(companyId);
 
   for (const asset of assets) {
     if (!asset.id) {
@@ -57,8 +72,8 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
     const isTrailer = !!asset.trailerType && asset.trailerType.trim() !== '';
     const collectionName = isTrailer ? 'trailers' : 'trucks';
     
-    const assetCollectionRef = collection(companyRef, collectionName);
-    const assetDocRef = doc(assetCollectionRef, asset.id);
+    const assetCollectionRef = companyRef.collection(collectionName);
+    const assetDocRef = assetCollectionRef.doc(asset.id);
 
     const dataToSet = {
       ...asset,
@@ -89,9 +104,10 @@ export async function addTruck(companyId: string, truckData: Truck): Promise<{ s
     }
 
     try {
-        const companyRef = doc(db, 'mainCompanies', companyId);
-        const trucksCollectionRef = collection(companyRef, 'trucks');
-        const truckDocRef = doc(trucksCollectionRef, truckData.id);
+        const { adminDb } = getAdminServices();
+        const companyRef = adminDb.collection('mainCompanies').doc(companyId);
+        const trucksCollectionRef = companyRef.collection('trucks');
+        const truckDocRef = trucksCollectionRef.doc(truckData.id);
         
         const dataToSet = {
             ...truckData,
@@ -100,7 +116,7 @@ export async function addTruck(companyId: string, truckData: Truck): Promise<{ s
             updatedAt: serverTimestamp(),
         };
 
-        await setDoc(truckDocRef, dataToSet);
+        await truckDocRef.set(dataToSet);
 
         return { success: true };
     } catch (error: any) {
@@ -115,13 +131,14 @@ export async function updateTruck(companyId: string, truckId: string, truckData:
     }
 
     try {
-        const truckDocRef = doc(db, 'mainCompanies', companyId, 'trucks', truckId);
+        const { adminDb } = getAdminServices();
+        const truckDocRef = adminDb.collection('mainCompanies').doc(companyId).collection('trucks').doc(truckId);
         
         // Remove id from the data to prevent it from being written to the document
         const dataToUpdate = { ...truckData };
         delete dataToUpdate.id;
 
-        await updateDoc(truckDocRef, {
+        await truckDocRef.update({
             ...dataToUpdate,
             updatedAt: serverTimestamp(),
         });
@@ -139,12 +156,13 @@ export async function updateTrailer(companyId: string, trailerId: string, traile
     }
 
     try {
-        const trailerDocRef = doc(db, 'mainCompanies', companyId, 'trailers', trailerId);
+        const { adminDb } = getAdminServices();
+        const trailerDocRef = adminDb.collection('mainCompanies').doc(companyId).collection('trailers').doc(trailerId);
         
         const dataToUpdate = { ...trailerData };
         delete dataToUpdate.id;
 
-        await updateDoc(trailerDocRef, {
+        await trailerDocRef.update({
             ...dataToUpdate,
             updatedAt: serverTimestamp(),
         });
@@ -162,9 +180,10 @@ export async function updateCompany(companyId: string, companyData: any): Promis
     }
 
     try {
-        const companyDocRef = doc(db, 'mainCompanies', companyId);
+        const { adminDb } = getAdminServices();
+        const companyDocRef = adminDb.collection('mainCompanies').doc(companyId);
         
-        await updateDoc(companyDocRef, {
+        await companyDocRef.update({
             ...companyData,
             updatedAt: serverTimestamp(),
         });
@@ -182,12 +201,13 @@ export async function assignTrucksToOwner(companyId: string, truckIds: string[],
     }
 
     try {
-        const batch = writeBatch(db);
-        const companyRef = doc(db, 'mainCompanies', companyId);
-        const trucksCollectionRef = collection(companyRef, 'trucks');
+        const { adminDb } = getAdminServices();
+        const batch = adminDb.batch();
+        const companyRef = adminDb.collection('mainCompanies').doc(companyId);
+        const trucksCollectionRef = companyRef.collection('trucks');
 
         truckIds.forEach(truckId => {
-            const truckDocRef = doc(trucksCollectionRef, truckId);
+            const truckDocRef = trucksCollectionRef.doc(truckId);
             batch.update(truckDocRef, { ownerId: ownerId });
         });
 
@@ -206,12 +226,13 @@ export async function assignTrailersToOwner(companyId: string, trailerIds: strin
     }
 
     try {
-        const batch = writeBatch(db);
-        const companyRef = doc(db, 'mainCompanies', companyId);
-        const trailersCollectionRef = collection(companyRef, 'trailers');
+        const { adminDb } = getAdminServices();
+        const batch = adminDb.batch();
+        const companyRef = adminDb.collection('mainCompanies').doc(companyId);
+        const trailersCollectionRef = companyRef.collection('trailers');
 
         trailerIds.forEach(trailerId => {
-            const trailerDocRef = doc(trailersCollectionRef, trailerId);
+            const trailerDocRef = trailersCollectionRef.doc(trailerId);
             batch.update(trailerDocRef, { ownerId: ownerId });
         });
 
@@ -231,11 +252,11 @@ export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>):
     }
 
     try {
-        const companyRef = doc(db, 'mainCompanies', companyId);
-        const ownersCollectionRef = collection(companyRef, 'owners');
+        const { adminDb } = getAdminServices();
+        const companyRef = adminDb.collection('mainCompanies').doc(companyId);
+        const ownersCollectionRef = companyRef.collection('owners');
         
-        // Firestore will auto-generate an ID for the new document
-        const newOwnerDocRef = doc(ownersCollectionRef);
+        const newOwnerDocRef = ownersCollectionRef.doc();
 
         const dataToSet = {
             ...ownerData,
@@ -244,7 +265,7 @@ export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>):
             createdAt: serverTimestamp(),
         };
 
-        await setDoc(newOwnerDocRef, dataToSet);
+        await newOwnerDocRef.set(dataToSet);
 
         return { success: true };
     } catch (error: any) {
@@ -259,9 +280,10 @@ export async function updateOwner(companyId: string, ownerId: string, ownerData:
     }
 
     try {
-        const ownerDocRef = doc(db, 'mainCompanies', companyId, 'owners', ownerId);
+        const { adminDb } = getAdminServices();
+        const ownerDocRef = adminDb.collection('mainCompanies').doc(companyId).collection('owners').doc(ownerId);
         
-        await updateDoc(ownerDocRef, {
+        await ownerDocRef.update({
             ...ownerData,
             updatedAt: serverTimestamp(),
         });
@@ -275,9 +297,10 @@ export async function updateOwner(companyId: string, ownerId: string, ownerData:
 
 // Function to get the next Work Order ID
 async function getNextWorkOrderId(companyId: string): Promise<string> {
-    const workOrdersRef = collection(db, 'mainCompanies', companyId, 'workOrders');
-    const q = query(workOrdersRef, orderBy('numericId', 'desc'), limit(1));
-    const querySnapshot = await getDocs(q);
+    const { adminDb } = getAdminServices();
+    const workOrdersRef = adminDb.collection('mainCompanies').doc(companyId).collection('workOrders');
+    const q = workOrdersRef.orderBy('numericId', 'desc').limit(1);
+    const querySnapshot = await q.get();
 
     if (querySnapshot.empty) {
         return 'WO-1001';
@@ -296,13 +319,14 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
     }
 
     try {
-        const companyRef = doc(db, 'mainCompanies', companyId);
-        const workOrdersCollectionRef = collection(companyRef, 'workOrders');
+        const { adminDb } = getAdminServices();
+        const companyRef = adminDb.collection('mainCompanies').doc(companyId);
+        const workOrdersCollectionRef = companyRef.collection('workOrders');
         
         const workOrderId = await getNextWorkOrderId(companyId);
         const numericId = parseInt(workOrderId.split('-')[1]);
 
-        const newWorkOrderDocRef = doc(workOrdersCollectionRef, workOrderId);
+        const newWorkOrderDocRef = workOrdersCollectionRef.doc(workOrderId);
 
         const dataToSet = {
             ...workOrderData,
@@ -312,7 +336,7 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
             updatedAt: serverTimestamp(),
         };
 
-        await setDoc(newWorkOrderDocRef, dataToSet);
+        await newWorkOrderDocRef.set(dataToSet);
 
         return { success: true, workOrderId: workOrderId };
     } catch (error: any) {
@@ -321,14 +345,15 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
     }
 }
 
-export async function addCatalogPart(companyId: string, partData: Omit<CatalogPart, 'id'>): Promise<{ success: boolean; error?: string }> {
+export async function addCatalogPart(companyId: string, partData: Omit<CatalogPart, 'id' | 'type'>): Promise<{ success: boolean; error?: string }> {
     if (!companyId) return { success: false, error: 'Company ID is required.' };
     
     try {
-        const catalogRef = collection(db, 'mainCompanies', companyId, 'catalog');
-        const partDocRef = doc(catalogRef, partData.partId);
+        const { adminDb } = getAdminServices();
+        const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
+        const partDocRef = catalogRef.doc(partData.partId);
 
-        await setDoc(partDocRef, {
+        await partDocRef.set({
             ...partData,
             type: 'part',
             createdAt: serverTimestamp(),
@@ -339,14 +364,15 @@ export async function addCatalogPart(companyId: string, partData: Omit<CatalogPa
     }
 }
 
-export async function addCatalogLabor(companyId: string, laborData: Omit<CatalogLabor, 'id'>): Promise<{ success: boolean; error?: string }> {
+export async function addCatalogLabor(companyId: string, laborData: Omit<CatalogLabor, 'id' | 'type'>): Promise<{ success: boolean; error?: string }> {
     if (!companyId) return { success: false, error: 'Company ID is required.' };
 
     try {
-        const catalogRef = collection(db, 'mainCompanies', companyId, 'catalog');
-        const laborDocRef = doc(catalogRef); // Auto-generate ID
+        const { adminDb } = getAdminServices();
+        const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
+        const laborDocRef = catalogRef.doc();
 
-        await setDoc(laborDocRef, {
+        await laborDocRef.set({
             ...laborData,
             id: laborDocRef.id,
             type: 'labor',
@@ -363,12 +389,13 @@ export async function addSupplier(companyId: string, supplierData: Omit<Supplier
         return { success: false, error: 'Company ID is required.' };
     }
     try {
-        const suppliersRef = collection(db, 'mainCompanies', companyId, 'suppliers');
-        const newDocRef = await addDoc(suppliersRef, {
+        const { adminDb } = getAdminServices();
+        const suppliersRef = adminDb.collection('mainCompanies').doc(companyId).collection('suppliers');
+        const newDocRef = await suppliersRef.add({
             ...supplierData,
             createdAt: serverTimestamp(),
         });
-        await updateDoc(newDocRef, { id: newDocRef.id });
+        await newDocRef.update({ id: newDocRef.id });
         return { success: true, supplierId: newDocRef.id };
     } catch (error: any) {
         return { success: false, error: error.message };
@@ -376,9 +403,10 @@ export async function addSupplier(companyId: string, supplierData: Omit<Supplier
 }
 
 async function getNextPurchaseOrderId(companyId: string): Promise<string> {
-    const poRef = collection(db, 'mainCompanies', companyId, 'purchaseOrders');
-    const q = query(poRef, orderBy('numericId', 'desc'), limit(1));
-    const querySnapshot = await getDocs(q);
+    const { adminDb } = getAdminServices();
+    const poRef = adminDb.collection('mainCompanies').doc(companyId).collection('purchaseOrders');
+    const q = poRef.orderBy('numericId', 'desc').limit(1);
+    const querySnapshot = await q.get();
 
     if (querySnapshot.empty) {
         return 'PO-1001';
@@ -394,20 +422,21 @@ export async function addPurchaseOrder(companyId: string, poData: Omit<PurchaseO
         return { success: false, error: 'Company ID is required.' };
     }
     try {
-        const poRef = collection(db, 'mainCompanies', companyId, 'purchaseOrders');
+        const { adminDb } = getAdminServices();
+        const poRef = adminDb.collection('mainCompanies').doc(companyId).collection('purchaseOrders');
         const poId = await getNextPurchaseOrderId(companyId);
         const numericId = parseInt(poId.split('-')[1]);
 
-        const poDocRef = doc(poRef, poId);
+        const poDocRef = poRef.doc(poId);
 
-        const dataToSet: PurchaseOrder = {
+        const dataToSet: Omit<PurchaseOrder, 'createdAt'> & { createdAt: any } = {
             ...poData,
             id: poId,
             numericId: numericId,
             createdAt: serverTimestamp(),
         };
 
-        await setDoc(poDocRef, dataToSet);
+        await poDocRef.set(dataToSet);
         return { success: true, purchaseOrderId: poId };
     } catch (error: any) {
         console.error('Error adding purchase order:', error);
@@ -424,6 +453,7 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
   }
 
   try {
+    const { adminDb, adminAuth } = getAdminServices();
     // 1. Create user in Firebase Authentication
     const userRecord = await adminAuth.createUser({
       email: userData.email,
@@ -432,7 +462,7 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     });
 
     // 2. Create user document in Firestore subcollection
-    const userDocRef = doc(db, 'mainCompanies', companyId, 'users', userRecord.uid);
+    const userDocRef = adminDb.collection('mainCompanies').doc(companyId).collection('users').doc(userRecord.uid);
     
     const dataToSet: Omit<User, 'createdAt' | 'updatedAt'> = {
         id: userRecord.uid,
@@ -443,7 +473,7 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
         isActive: true,
     };
 
-    await setDoc(userDocRef, {
+    await userDocRef.set({
         ...dataToSet,
         createdAt: serverTimestamp(),
     });
@@ -461,3 +491,5 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     return { success: false, error: errorMessage };
   }
 }
+
+    
