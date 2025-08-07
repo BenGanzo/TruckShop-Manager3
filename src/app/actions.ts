@@ -340,12 +340,12 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
     }
 }
 
-export async function addCatalogPart(companyId: string, partData: Omit<CatalogPart, 'id' | 'type'>): Promise<{ success: boolean; error?: string }> {
+export async function addCatalogPart(companyId: string, partData: any): Promise<{ success: boolean; error?: string }> {
     if (!companyId) {
         return { success: false, error: 'Company ID is required.' };
     }
 
-    // --- FIX 1: Validate the Part ID before using it ---
+    // Validación del Part ID
     if (!partData.partId || typeof partData.partId !== 'string' || partData.partId.trim() === '') {
         return { success: false, error: 'Part ID / SKU is required and cannot be empty.' };
     }
@@ -353,23 +353,30 @@ export async function addCatalogPart(companyId: string, partData: Omit<CatalogPa
     try {
         const { adminDb } = getAdminServices();
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
-        
-        // Use the validated partId
         const partDocRef = catalogRef.doc(partData.partId);
 
-        await partDocRef.set({
-            ...partData,
+        // --- SOLUCIÓN FINAL: Construir un objeto limpio con los datos correctos ---
+        const dataToSet = {
+            partName: partData.partName || '',
+            partId: partData.partId,
+            onHand: parseFloat(partData.onHand) || 0, // Convertir a número
+            cost: parseFloat(partData.cost) || 0,       // Convertir a número
+            taxable: partData.taxable || false,
+            // Agrega aquí cualquier otro campo del formulario que necesites guardar
+            // ejemplo: description: partData.description || '',
             type: 'part',
             createdAt: FieldValue.serverTimestamp(),
-            updatedAt: FieldValue.serverTimestamp(), // Also good to add this
-        });
+            updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        await partDocRef.set(dataToSet);
         
         return { success: true };
 
     } catch (e: any) {
-        return { success: false, error: 'PRUEBA_DE_ERROR_DEL_DIA_7_DE_AGOSTO' };
-        // --- FIX 2: Return a clean, safe error message ---
-        return { success: false, error: e.message };
+        console.error('Error adding catalog part:', e);
+        // Devolvemos el mensaje de error seguro y amigable
+        return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
     }
 }
 
