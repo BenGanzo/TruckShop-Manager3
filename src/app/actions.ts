@@ -369,7 +369,7 @@ export async function addCatalogPart(companyId: string, partData: Omit<CatalogPa
     } catch (e: any) {
         console.error('Error adding catalog part:', e);
         // --- FIX 2: Return a clean, safe error message ---
-        return { success: false, error: 'Failed to save the part to the database. Please check the details and try again.' };
+        return { success: false, error: e.message };
     }
 }
 
