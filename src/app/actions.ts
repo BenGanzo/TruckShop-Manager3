@@ -355,28 +355,28 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
         const partDocRef = catalogRef.doc(partData.partId);
 
-        // --- SOLUCIÓN FINAL: Construir un objeto limpio con los datos correctos ---
+        // Construir un objeto limpio con los datos correctos
         const dataToSet = {
             partName: partData.partName || '',
             partId: partData.partId,
             onHand: parseFloat(partData.onHand) || 0, // Convertir a número
             cost: parseFloat(partData.cost) || 0,       // Convertir a número
             taxable: partData.taxable || false,
-            // Agrega aquí cualquier otro campo del formulario que necesites guardar
-            // ejemplo: description: partData.description || '',
             type: 'part',
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
         };
 
+        // --- PARTE FALTANTE 1: La orden para guardar ---
         await partDocRef.set(dataToSet);
         
+        // Si todo sale bien, devolvemos éxito
         return { success: true };
 
     } catch (e: any) {
+        // --- PARTE FALTANTE 2: El manejo de errores ---
         console.error('Error adding catalog part:', e);
-        // Devolvemos el mensaje de error seguro y amigable
-        return { success: false, error: e.message };
+        return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
     }
 }
 
