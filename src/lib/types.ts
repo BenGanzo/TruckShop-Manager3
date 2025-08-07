@@ -1,4 +1,4 @@
-
+import type { FieldValue } from 'firebase-admin/firestore';
 
 export interface Asset {
     id: string;
@@ -103,9 +103,9 @@ export interface WorkOrder {
   parts?: any[]; // Replace 'any' with a 'Part' interface later
   labor?: any[]; // Replace 'any' with a 'Labor' interface later
   taxRate?: number;
-  total?: number;
-  createdAt: Date;
-  updatedAt?: Date;
+  total?: number
+  createdAt:Date | FieldValue; 
+  updatedAt?:Date | FieldValue;
 }
 
 export interface CatalogPart {

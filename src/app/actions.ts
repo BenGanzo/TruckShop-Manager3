@@ -1,27 +1,19 @@
-
 'use server';
 
-import { getFirestore, collection, writeBatch, doc, serverTimestamp, setDoc, updateDoc, addDoc, getDocs, query, orderBy, limit } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
 import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplier, PurchaseOrder, User, Trailer } from '@/lib/types';
 import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
-import { config } from 'dotenv';
+import { getFirestore as getAdminFirestore, FieldValue } from 'firebase-admin/firestore';
 
 // Function to get admin services lazily and ensure singleton pattern
 function getAdminServices() {
-    config(); // Explicitly load environment variables at the last possible moment
-
     if (admin.apps.length === 0) {
         const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
         if (!serviceAccount) {
             throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
         }
         
-        // Replace escaped newlines before parsing
-        const cleanedServiceAccount = serviceAccount.replace(/\\n/g, '\n');
-        const parsedServiceAccount = JSON.parse(cleanedServiceAccount);
+        const parsedServiceAccount = JSON.parse(serviceAccount);
 
         admin.initializeApp({
             credential: admin.credential.cert(parsedServiceAccount),
@@ -81,8 +73,8 @@ export async function importAssets(companyId: string, assets: Asset[]): Promise<
     const dataToSet = {
       ...asset,
       companyId: companyId,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
     };
     
     // Remove the 'id' from the data object itself as it's the document ID
@@ -115,8 +107,8 @@ export async function addTruck(companyId: string, truckData: Truck): Promise<{ s
         const dataToSet = {
             ...truckData,
             companyId: companyId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         };
 
         await truckDocRef.set(dataToSet);
@@ -143,7 +135,7 @@ export async function updateTruck(companyId: string, truckId: string, truckData:
 
         await truckDocRef.update({
             ...dataToUpdate,
-            updatedAt: serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         });
 
         return { success: true };
@@ -167,7 +159,7 @@ export async function updateTrailer(companyId: string, trailerId: string, traile
 
         await trailerDocRef.update({
             ...dataToUpdate,
-            updatedAt: serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         });
 
         return { success: true };
@@ -188,7 +180,7 @@ export async function updateCompany(companyId: string, companyData: any): Promis
         
         await companyDocRef.update({
             ...companyData,
-            updatedAt: serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         });
 
         return { success: true };
@@ -265,7 +257,7 @@ export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>):
             ...ownerData,
             id: newOwnerDocRef.id,
             companyId: companyId,
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         };
 
         await newOwnerDocRef.set(dataToSet);
@@ -288,7 +280,7 @@ export async function updateOwner(companyId: string, ownerId: string, ownerData:
         
         await ownerDocRef.update({
             ...ownerData,
-            updatedAt: serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         });
 
         return { success: true };
@@ -331,12 +323,12 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
 
         const newWorkOrderDocRef = workOrdersCollectionRef.doc(workOrderId);
 
-        const dataToSet = {
+        const dataToSet: Omit<WorkOrder, 'createdAt'> & { createdAt: any } = {
             ...workOrderData,
             id: workOrderId,
             numericId: numericId,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         };
 
         await newWorkOrderDocRef.set(dataToSet);
@@ -359,7 +351,7 @@ export async function addCatalogPart(companyId: string, partData: Omit<CatalogPa
         await partDocRef.set({
             ...partData,
             type: 'part',
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
         return { success: true };
     } catch (e: any) {
@@ -379,7 +371,7 @@ export async function addCatalogLabor(companyId: string, laborData: Omit<Catalog
             ...laborData,
             id: laborDocRef.id,
             type: 'labor',
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
         return { success: true };
     } catch (e: any) {
@@ -396,7 +388,7 @@ export async function addSupplier(companyId: string, supplierData: Omit<Supplier
         const suppliersRef = adminDb.collection('mainCompanies').doc(companyId).collection('suppliers');
         const newDocRef = await suppliersRef.add({
             ...supplierData,
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
         await newDocRef.update({ id: newDocRef.id });
         return { success: true, supplierId: newDocRef.id };
@@ -436,7 +428,7 @@ export async function addPurchaseOrder(companyId: string, poData: Omit<PurchaseO
             ...poData,
             id: poId,
             numericId: numericId,
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         };
 
         await poDocRef.set(dataToSet);
@@ -478,7 +470,7 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
 
     await userDocRef.set({
         ...dataToSet,
-        createdAt: serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
     });
 
     return { success: true };
@@ -494,7 +486,3 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     return { success: false, error: errorMessage };
   }
 }
-
-    
-
-    
