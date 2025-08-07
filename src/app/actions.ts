@@ -341,21 +341,35 @@ export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOr
 }
 
 export async function addCatalogPart(companyId: string, partData: Omit<CatalogPart, 'id' | 'type'>): Promise<{ success: boolean; error?: string }> {
-    if (!companyId) return { success: false, error: 'Company ID is required.' };
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+
+    // --- FIX 1: Validate the Part ID before using it ---
+    if (!partData.partId || typeof partData.partId !== 'string' || partData.partId.trim() === '') {
+        return { success: false, error: 'Part ID / SKU is required and cannot be empty.' };
+    }
     
     try {
         const { adminDb } = getAdminServices();
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
+        
+        // Use the validated partId
         const partDocRef = catalogRef.doc(partData.partId);
 
         await partDocRef.set({
             ...partData,
             type: 'part',
             createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(), // Also good to add this
         });
+        
         return { success: true };
+
     } catch (e: any) {
-        return { success: false, error: e.message };
+        console.error('Error adding catalog part:', e);
+        // --- FIX 2: Return a clean, safe error message ---
+        return { success: false, error: 'Failed to save the part to the database. Please check the details and try again.' };
     }
 }
 
