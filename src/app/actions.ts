@@ -7,9 +7,12 @@ import type { Asset, Owner, Truck, WorkOrder, CatalogPart, CatalogLabor, Supplie
 import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
+import { config } from 'dotenv';
 
 // Function to get admin services lazily and ensure singleton pattern
 function getAdminServices() {
+    config(); // Explicitly load environment variables at the last possible moment
+
     if (admin.apps.length === 0) {
         const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
         if (!serviceAccount) {
@@ -35,7 +38,7 @@ export async function getPartRecommendations(input: any) {
     console.log('Getting recommendations for:', input.problemDescription);
     // In a real app, you would import and call your Genkit flow here.
     // For now, returning a hardcoded success response.
-    const { workOrderPartRecommendation } = await import('@/ai/flows/work--order-part-recommendation');
+    const { workOrderPartRecommendation } = await import('@/ai/flows/work-order-part-recommendation');
 
     try {
         const result = await workOrderPartRecommendation(input);
@@ -491,5 +494,7 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     return { success: false, error: errorMessage };
   }
 }
+
+    
 
     
