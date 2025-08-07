@@ -13,7 +13,7 @@ function getAdminServices() {
             throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
         }
         
-        const parsedServiceAccount = JSON.parse(serviceAccount);
+        const parsedServiceAccount = JSON.parse(process.env['FIREBASE_SERVICE_ACCOUNT']!);
 
         admin.initializeApp({
             credential: admin.credential.cert(parsedServiceAccount),

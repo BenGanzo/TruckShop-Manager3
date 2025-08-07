@@ -104,7 +104,7 @@ export interface WorkOrder {
   labor?: any[]; // Replace 'any' with a 'Labor' interface later
   taxRate?: number;
   total?: number
-  createdAt:Date | FieldValue; 
+  createdAt?:Date | FieldValue; 
   updatedAt?:Date | FieldValue;
 }
 
