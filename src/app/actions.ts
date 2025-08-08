@@ -376,7 +376,7 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
     } catch (e: any) {
         // --- PARTE FALTANTE 2: El manejo de errores ---
         console.error('Error adding catalog part:', e);
-        return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
+        return { success: false, error: 'PRUEBA_DE_ERROR_DEL_DIA_7_DE_AGOSTO' };
     }
 }
 
