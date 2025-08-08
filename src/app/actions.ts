@@ -354,7 +354,7 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
         const partDocRef = catalogRef.doc(partData.partId);
 
-        // --- SOLUCIÓN FINAL Y REVISADA ---
+        // --- SOLUCIÓN: Forzar la conversión de cada tipo de dato ---
         const dataToSet = {
             type: 'part',
             name: String(partData.name || ''),
