@@ -345,7 +345,6 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         return { success: false, error: 'Company ID is required.' };
     }
 
-    // Validación del Part ID
     if (!partData.partId || typeof partData.partId !== 'string' || partData.partId.trim() === '') {
         return { success: false, error: 'Part ID / SKU is required and cannot be empty.' };
     }
@@ -355,13 +354,13 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
         const partDocRef = catalogRef.doc(partData.partId);
 
-        // --- SOLUCIÓN: Construir un objeto limpio con los datos correctos ---
+        // --- CORRECCIÓN FINAL: Usar los nombres correctos del formulario ---
         const dataToSet = {
-            partName: partData.partName || '',
+            name: partData.name || '',              // CORREGIDO: de 'partName' a 'name'
             partId: partData.partId,
-            onHand: parseFloat(partData.onHand) || 0, // Convertir a número
-            cost: parseFloat(partData.cost) || 0,       // Convertir a número
-            taxable: partData.taxable || false,
+            quantity: partData.quantity || 0,         // CORREGIDO: de 'onHand' a 'quantity'
+            cost: partData.cost || 0,
+            isTaxable: partData.isTaxable || false,   // CORREGIDO: de 'taxable' a 'isTaxable'
             type: 'part',
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
@@ -373,27 +372,7 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
 
     } catch (e: any) {
         console.error('Error adding catalog part:', e);
-        // Devolvemos el mensaje de error seguro y amigable
         return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
-    }
-}
-export async function addCatalogLabor(companyId: string, laborData: Omit<CatalogLabor, 'id' | 'type'>): Promise<{ success: boolean; error?: string }> {
-    if (!companyId) return { success: false, error: 'Company ID is required.' };
-
-    try {
-        const { adminDb } = getAdminServices();
-        const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
-        const laborDocRef = catalogRef.doc();
-
-        await laborDocRef.set({
-            ...laborData,
-            id: laborDocRef.id,
-            type: 'labor',
-            createdAt: FieldValue.serverTimestamp(),
-        });
-        return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
     }
 }
 
