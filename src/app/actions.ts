@@ -355,7 +355,7 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
         const partDocRef = catalogRef.doc(partData.partId);
 
-        // Construir un objeto limpio con los datos correctos
+        // --- SOLUCIÓN: Construir un objeto limpio con los datos correctos ---
         const dataToSet = {
             partName: partData.partName || '',
             partId: partData.partId,
@@ -367,19 +367,16 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
             updatedAt: FieldValue.serverTimestamp(),
         };
 
-        // --- PARTE FALTANTE 1: La orden para guardar ---
         await partDocRef.set(dataToSet);
         
-        // Si todo sale bien, devolvemos éxito
         return { success: true };
 
     } catch (e: any) {
-        // --- PARTE FALTANTE 2: El manejo de errores ---
         console.error('Error adding catalog part:', e);
-        return { success: false, error: 'PRUEBA_DE_ERROR_DEL_DIA_7_DE_AGOSTO' };
+        // Devolvemos el mensaje de error seguro y amigable
+        return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
     }
 }
-
 export async function addCatalogLabor(companyId: string, laborData: Omit<CatalogLabor, 'id' | 'type'>): Promise<{ success: boolean; error?: string }> {
     if (!companyId) return { success: false, error: 'Company ID is required.' };
 
