@@ -354,14 +354,14 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
         const partDocRef = catalogRef.doc(partData.partId);
 
-        // --- CORRECCIÓN FINAL: Usar los nombres correctos del formulario ---
+        // --- SOLUCIÓN FINAL Y REVISADA ---
         const dataToSet = {
-            name: partData.name || '',              // CORREGIDO: de 'partName' a 'name'
-            partId: partData.partId,
-            quantity: partData.quantity || 0,         // CORREGIDO: de 'onHand' a 'quantity'
-            cost: partData.cost || 0,
-            isTaxable: partData.isTaxable || false,   // CORREGIDO: de 'taxable' a 'isTaxable'
             type: 'part',
+            name: String(partData.name || ''),
+            partId: String(partData.partId),
+            quantity: Number(partData.quantity || 0),
+            cost: Number(partData.cost || 0),
+            isTaxable: Boolean(partData.isTaxable || false),
             createdAt: FieldValue.serverTimestamp(),
             updatedAt: FieldValue.serverTimestamp(),
         };
@@ -372,7 +372,8 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
 
     } catch (e: any) {
         console.error('Error adding catalog part:', e);
-        return { success: false, error: 'Failed to save the part. Please check the details and try again.' };
+        // Devolvemos un error seguro
+        return { success: false, error: 'An unexpected error occurred while saving to the database.' };
     }
 }
 
