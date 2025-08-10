@@ -99,7 +99,6 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
   const [kitQty, setKitQty] = useState(1);
 
   const onPartSubmit = async (data: z.infer<typeof partSchema>) => {
-    console.log("DATOS A ENVIAR:", { companyId: companyId, formData: data })
     if (!companyId) return;
     setIsLoading(true);
     const result = await addCatalogPart(companyId, data);
