@@ -150,7 +150,7 @@ export default function WorkOrdersPage() {
                       <TableRow key={wo.id}>
                         <TableCell className="font-medium">
                            <Button variant="link" asChild className="p-0 h-auto">
-                              <Link href={`/work-orders/${wo.id}`}>{wo.id}</Link>
+                              <Link href={`/work-orders/${wo.id}/print`}>{wo.id}</Link>
                            </Button>
                         </TableCell>
                         <TableCell>{wo.vehicleId}</TableCell>
