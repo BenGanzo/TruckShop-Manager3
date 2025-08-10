@@ -8,15 +8,22 @@ import { getFirestore as getAdminFirestore, FieldValue } from 'firebase-admin/fi
 // Function to get admin services lazily and ensure singleton pattern
 function getAdminServices() {
     if (admin.apps.length === 0) {
-        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
-        if (!serviceAccount) {
-            throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
+        // Lee las 3 piezas por separado desde Netlify
+        const projectId = process.env.FIREBASE_PROJECT_ID;
+        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+        if (!projectId || !clientEmail || !privateKey) {
+            throw new Error('Firebase admin environment variables are not set.');
         }
-        
-        const parsedServiceAccount = JSON.parse(process.env['FIREBASE_SERVICE_ACCOUNT']!);
 
         admin.initializeApp({
-            credential: admin.credential.cert(parsedServiceAccount),
+            credential: admin.credential.cert({
+                projectId,
+                clientEmail,
+                // Esto arregla el formato de la llave para que Firebase la entienda
+                privateKey: privateKey.replace(/\\n/g, '\n'),
+            }),
         });
     }
     const adminDb = getAdminFirestore();
