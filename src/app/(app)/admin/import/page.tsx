@@ -17,31 +17,16 @@ import { UploadCloud, File as FileIcon, Trash2, Import, Loader2 } from 'lucide-r
 import { useToast } from '@/hooks/use-toast';
 import Papa from 'papaparse';
 import { importAssets } from '@/app/actions';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
 import type { Asset } from '@/lib/types';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 export default function AdminImportPage() {
-  const [user] = useAuthState(auth);
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [importResults, setImportResults] = useState<{ success: number; errors: number } | null>(null);
   const { toast } = useToast();
-
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
 
   const onDrop = useCallback((acceptedFiles: File[], fileRejections: any[]) => {
     setImportResults(null);
@@ -239,7 +224,7 @@ export default function AdminImportPage() {
                 </div>
               )}
             </div>
-            <Button className="w-full mt-auto" disabled={!file || isLoading} onClick={handleImport} size="lg">
+            <Button className="w-full mt-auto" disabled={!file || isLoading || !companyId} onClick={handleImport} size="lg">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

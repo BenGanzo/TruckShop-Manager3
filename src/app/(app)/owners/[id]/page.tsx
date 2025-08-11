@@ -19,8 +19,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, app } from '@/lib/firebase';
 import { updateOwner } from '@/app/actions';
 import {
   Form,
@@ -31,18 +29,10 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { doc, getDoc, getFirestore } from 'firebase/firestore';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
+import { useDocumentData } from 'react-firebase-hooks/firestore';
+import type { Owner } from '@/lib/types';
 
 const ownerFormSchema = z.object({
   ownerName: z.string().min(1, 'Owner Name is required.'),
@@ -59,50 +49,48 @@ export default function EditOwnerPage() {
     const router = useRouter();
     const params = useParams();
     const { toast } = useToast();
-    const [user] = useAuthState(auth);
-    const [isLoading, setIsLoading] = React.useState(false);
-    const [isFetching, setIsFetching] = React.useState(true);
+    const [isSaving, setIsSaving] = React.useState(false);
 
     const ownerId = params.id as string;
-    const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+    const companyId = useCompanyId();
     const db = getFirestore(app);
     
+    const ownerDocRef = React.useMemo(
+      () => (companyId && ownerId ? doc(db, 'mainCompanies', companyId, 'owners', ownerId) : undefined),
+      [db, companyId, ownerId]
+    );
+
+    const [ownerData, loading] = useDocumentData(ownerDocRef);
+    const isLoading = !companyId || loading;
+
     const form = useForm<OwnerFormData>({
         resolver: zodResolver(ownerFormSchema),
         defaultValues: {},
     });
 
     React.useEffect(() => {
-        if (!ownerId || !companyId) return;
+        if (ownerData) {
+            form.reset(ownerData as OwnerFormData);
+        }
+    }, [ownerData, form]);
 
-        const fetchOwnerData = async () => {
-            setIsFetching(true);
-            const ownerDocRef = doc(db, 'mainCompanies', companyId, 'owners', ownerId);
-            const ownerDocSnap = await getDoc(ownerDocRef);
-
-            if (ownerDocSnap.exists()) {
-                const data = ownerDocSnap.data() as OwnerFormData;
-                form.reset(data);
-            } else {
-                toast({
-                    variant: 'destructive',
-                    title: 'Not Found',
-                    description: 'Owner could not be found.',
-                });
-                router.push('/owners');
-            }
-            setIsFetching(false);
-        };
-
-        fetchOwnerData();
-    }, [ownerId, companyId, db, form, router, toast]);
+    React.useEffect(() => {
+        if (!loading && !ownerData && companyId) {
+            toast({
+                variant: 'destructive',
+                title: 'Not Found',
+                description: 'Owner could not be found.',
+            });
+            router.push('/owners');
+        }
+    }, [loading, ownerData, companyId, router, toast]);
 
     const onSubmit = async (data: OwnerFormData) => {
         if (!companyId || !ownerId) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company or the owner.' });
             return;
         }
-        setIsLoading(true);
+        setIsSaving(true);
         try {
             const result = await updateOwner(companyId, ownerId, data);
             if (result.success) {
@@ -114,11 +102,11 @@ export default function EditOwnerPage() {
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
         } finally {
-            setIsLoading(false);
+            setIsSaving(false);
         }
     }
 
-  if (isFetching) {
+  if (isLoading) {
     return (
         <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
             <div className="flex items-center justify-between">
@@ -151,9 +139,9 @@ export default function EditOwnerPage() {
                     Edit Owner
                 </h1>
             </div>
-            <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
-                {isLoading ? "Saving..." : "Save Changes"}
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
+                {isSaving ? "Saving..." : "Save Changes"}
             </Button>
         </div>
         <Card className="w-full max-w-2xl mx-auto">

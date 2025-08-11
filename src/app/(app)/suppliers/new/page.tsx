@@ -18,8 +18,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
 import { addSupplier } from '@/app/actions';
 import {
   Form,
@@ -29,17 +27,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 const supplierSchema = z.object({
   name: z.string().min(1, 'Supplier Name is required.'),
@@ -59,9 +47,8 @@ type SupplierFormData = z.infer<typeof supplierSchema>;
 export default function AddSupplierPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user] = useAuthState(auth);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const companyId = useCompanyId();
 
   const form = useForm<SupplierFormData>({
     resolver: zodResolver(supplierSchema),
@@ -81,17 +68,22 @@ export default function AddSupplierPage() {
 
   const onSubmit = async (data: SupplierFormData) => {
     if (!companyId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company. Please wait and try again.' });
       return;
     }
-    setIsLoading(true);
-    const result = await addSupplier(companyId, data);
-    setIsLoading(false);
-    if (result.success) {
-      toast({ title: 'Supplier Added!', description: 'The new supplier has been saved successfully.' });
-      router.push('/suppliers');
-    } else {
-      toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
+    setIsSaving(true);
+    try {
+        const result = await addSupplier(companyId, data);
+        if (result.success) {
+            toast({ title: 'Supplier Added!', description: 'The new supplier has been saved successfully.' });
+            router.push('/suppliers');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
+    } finally {
+        setIsSaving(false);
     }
   };
 
@@ -111,9 +103,9 @@ export default function AddSupplierPage() {
                 Add New Supplier
               </h1>
             </div>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Saving...' : 'Save Supplier'}
+            <Button type="submit" disabled={isSaving || !companyId}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isSaving ? 'Saving...' : 'Save Supplier'}
             </Button>
           </div>
           <Card className="w-full max-w-2xl mx-auto">

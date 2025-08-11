@@ -4,8 +4,9 @@
 import { useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore, query, orderBy } from 'firebase/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { app, auth } from '@/lib/firebase';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import type { Supplier } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
@@ -28,26 +29,27 @@ import { PlusCircle, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
-
 export default function SuppliersPage() {
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
 
-  const suppliersRef = companyId ? collection(db, 'mainCompanies', companyId, 'suppliers') : null;
-  const suppliersQuery = suppliersRef ? query(suppliersRef, orderBy('createdAt', 'desc')) : null;
+  const suppliersRef = useMemo(
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'suppliers') : undefined),
+    [db, companyId]
+  );
+  
+  const suppliersQuery = useMemo(() => (suppliersRef ? query(suppliersRef, orderBy('createdAt', 'desc')) : undefined), [suppliersRef]);
   const [suppliersSnapshot, loading, error] = useCollection(suppliersQuery);
 
-  const suppliers: Supplier[] = suppliersSnapshot?.docs.map(doc => ({ ...doc.data() } as Supplier)) || [];
-  const isLoading = userLoading || loading;
+  const suppliers: (Supplier & { id: string })[] = useMemo(() => {
+    if (!suppliersSnapshot) return [];
+    return suppliersSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => {
+      const data = s.data() as Supplier;
+      return { id: s.id, ...data };
+    });
+  }, [suppliersSnapshot]);
+
+  const isLoading = !companyId || loading;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">

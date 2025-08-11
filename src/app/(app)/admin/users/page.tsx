@@ -4,8 +4,9 @@
 import { useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore, query } from 'firebase/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { app, auth } from '@/lib/firebase';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import type { User } from '@/lib/types';
 
 import { Badge } from '@/components/ui/badge';
@@ -29,26 +30,27 @@ import { Pencil, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
-
 export default function AdminUsersPage() {
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
 
-  const usersRef = companyId ? collection(db, 'mainCompanies', companyId, 'users') : null;
+  const usersRef = useMemo(
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'users') : undefined),
+    [db, companyId]
+  );
+  
   const [usersSnapshot, loading, error] = useCollection(usersRef);
 
-  const users = usersSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() } as User)) || [];
+  const users: (User & { id: string })[] = useMemo(() => {
+    if (!usersSnapshot) return [];
+    return usersSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => {
+      const data = s.data() as User;
+      return { id: s.id, ...data };
+    });
+  }, [usersSnapshot]);
+  
 
-  const isLoading = userLoading || loading;
+  const isLoading = !companyId || loading;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">

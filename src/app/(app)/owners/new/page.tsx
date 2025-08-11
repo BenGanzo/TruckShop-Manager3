@@ -10,7 +10,6 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { ArrowLeft, Loader2, Users } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
@@ -19,8 +18,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
 import { addOwner } from '@/app/actions';
 import {
   Form,
@@ -30,18 +27,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 const ownerFormSchema = z.object({
   ownerName: z.string().min(1, 'Owner Name is required.'),
@@ -57,10 +43,8 @@ type OwnerFormData = z.infer<typeof ownerFormSchema>;
 export default function AddOwnerPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const [user] = useAuthState(auth);
     const [isLoading, setIsLoading] = React.useState(false);
-    
-    const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+    const companyId = useCompanyId();
     
     const form = useForm<OwnerFormData>({
         resolver: zodResolver(ownerFormSchema),
@@ -76,7 +60,7 @@ export default function AddOwnerPage() {
 
     const onSubmit = async (data: OwnerFormData) => {
         if (!companyId) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company.' });
+            toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company. Please wait and try again.' });
             return;
         }
         setIsLoading(true);
@@ -109,7 +93,7 @@ export default function AddOwnerPage() {
                     Add New Owner
                 </h1>
             </div>
-            <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading}>
+            <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading || !companyId}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isLoading ? "Saving..." : "Save Owner"}
             </Button>

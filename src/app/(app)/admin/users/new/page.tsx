@@ -1,10 +1,8 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -27,21 +25,12 @@ import {
 } from '@/components/ui/select';
 import { addUser } from '@/app/actions';
 import Link from 'next/link';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 export default function AddUserPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -53,7 +42,7 @@ export default function AddUserPage() {
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!companyId) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company.' });
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company. Please wait and try again.' });
       return;
     }
     if (!role) {
@@ -102,7 +91,7 @@ export default function AddUserPage() {
             Add New User
           </h1>
         </div>
-        <Button onClick={handleAddUser} disabled={isLoading || userLoading}>
+        <Button onClick={handleAddUser} disabled={isLoading || !companyId}>
           {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
           {isLoading ? 'Saving...' : 'Save User'}
         </Button>

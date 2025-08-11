@@ -3,9 +3,10 @@
 
 import { useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, getFirestore, query, orderBy, Timestamp } from 'firebase/firestore';
-import { app, auth } from '@/lib/firebase';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import type { PurchaseOrder } from '@/lib/types';
 import { format } from 'date-fns';
 
@@ -13,39 +14,35 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Printer } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidbrionesmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
-
 export default function PurchaseOrdersPage() {
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
 
-  const poRef = companyId ? collection(db, 'mainCompanies', companyId, 'purchaseOrders') : null;
-  const poQuery = poRef ? query(poRef, orderBy('createdAt', 'desc')) : null;
+  const poRef = useMemo(
+      () => (companyId ? collection(db, 'mainCompanies', companyId, 'purchaseOrders') : undefined),
+      [db, companyId]
+  );
+  const poQuery = useMemo(() => (poRef ? query(poRef, orderBy('createdAt', 'desc')) : undefined), [poRef]);
   const [poSnapshot, loading, error] = useCollection(poQuery);
   
-  const purchaseOrders: PurchaseOrder[] = poSnapshot?.docs.map(doc => {
-      const data = doc.data();
+  const purchaseOrders: (PurchaseOrder & { id: string })[] = useMemo(() => {
+    if (!poSnapshot) return [];
+    return poSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => {
+      const data = s.data();
       return {
           ...data,
-          id: doc.id,
+          id: s.id,
           issueDate: data.issueDate instanceof Timestamp ? data.issueDate.toDate() : new Date(),
           createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
-      } as PurchaseOrder;
-  }) || [];
+      } as (PurchaseOrder & { id: string });
+    });
+  }, [poSnapshot]);
 
-  const isLoading = userLoading || loading;
+  const isLoading = !companyId || loading;
 
   const getStatusVariant = (status: string) => {
     switch (status) {

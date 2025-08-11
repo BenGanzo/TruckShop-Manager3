@@ -4,8 +4,9 @@
 import { useMemo } from 'react';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore, query, orderBy } from 'firebase/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { app, auth } from '@/lib/firebase';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import type { CatalogPart, CatalogLabor } from '@/lib/types';
 
 import {
@@ -28,34 +29,35 @@ import { AddCatalogItemDialog } from '@/components/add-catalog-item-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
-
-
 export default function CatalogPage() {
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
 
-  const catalogRef = companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null;
-  const catalogQuery = catalogRef ? query(catalogRef, orderBy('createdAt', 'desc')) : null;
+  const catalogRef = useMemo(
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : undefined),
+    [db, companyId]
+  );
+  
+  const catalogQuery = useMemo(
+      () => (catalogRef ? query(catalogRef, orderBy('createdAt', 'desc')) : undefined),
+      [catalogRef]
+  );
+  
   const [catalogSnapshot, loading, error] = useCollection(catalogQuery);
 
   const { parts, labor } = useMemo(() => {
-    const allItems = catalogSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+    if (!catalogSnapshot) return { parts: [], labor: [] };
+    const allItems = catalogSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => {
+        const data = s.data();
+        return { id: s.id, ...data };
+    });
     return {
-      parts: allItems.filter(item => item.type === 'part') as CatalogPart[],
-      labor: allItems.filter(item => item.type === 'labor') as CatalogLabor[],
+      parts: allItems.filter(item => item.type === 'part') as (CatalogPart & {id: string})[],
+      labor: allItems.filter(item => item.type === 'labor') as (CatalogLabor & {id: string})[],
     };
   }, [catalogSnapshot]);
 
-  const isLoading = userLoading || loading;
+  const isLoading = !companyId || loading;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">

@@ -34,30 +34,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
 import { addTruck } from '@/app/actions';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 const truckFormSchema = z.object({
   id: z.string().min(1, 'Truck ID is required.'),
@@ -112,10 +98,8 @@ type TruckFormData = z.infer<typeof truckFormSchema>;
 export default function AddTruckPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user] = useAuthState(auth);
-  const [isLoading, setIsLoading] = React.useState(false);
-  
-  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const companyId = useCompanyId();
 
   const form = useForm<TruckFormData>({
     resolver: zodResolver(truckFormSchema),
@@ -140,10 +124,10 @@ export default function AddTruckPage() {
 
   const onSubmit = async (data: TruckFormData) => {
     if (!companyId) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company. Please wait and try again.' });
         return;
     }
-    setIsLoading(true);
+    setIsSaving(true);
     try {
         const result = await addTruck(companyId, data);
         if (result.success) {
@@ -155,7 +139,7 @@ export default function AddTruckPage() {
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
     } finally {
-        setIsLoading(false);
+        setIsSaving(false);
     }
   };
 
@@ -174,9 +158,9 @@ export default function AddTruckPage() {
               Add Truck
             </h1>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isLoading ? 'Saving...' : 'Save Truck'}
+          <Button type="submit" disabled={isSaving || !companyId}>
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSaving ? 'Saving...' : 'Save Truck'}
           </Button>
         </div>
 

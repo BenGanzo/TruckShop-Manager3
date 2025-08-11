@@ -6,9 +6,10 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { collection, getFirestore, query } from 'firebase/firestore';
-import { app, auth } from '@/lib/firebase';
+import { collection, getFirestore, query, where } from 'firebase/firestore';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 
@@ -27,15 +28,6 @@ import Link from 'next/link';
 import type { Supplier, CatalogPart } from '@/lib/types';
 import { addPurchaseOrder } from '@/app/actions';
 import { Checkbox } from '@/components/ui/checkbox';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
 
 const poItemSchema = z.object({
   partId: z.string(),
@@ -59,20 +51,27 @@ type POFormData = z.infer<typeof purchaseOrderSchema>;
 export default function CreatePurchaseOrderPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [user, userLoading] = useAuthState(auth);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const [isSaving, setIsSaving] = React.useState(false);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
   const [isTaxable, setIsTaxable] = React.useState(true);
 
   // Data fetching
-  const suppliersRef = companyId ? collection(db, 'mainCompanies', companyId, 'suppliers') : null;
+  const suppliersRef = React.useMemo(() => (companyId ? collection(db, 'mainCompanies', companyId, 'suppliers') : undefined), [db, companyId]);
   const [suppliersSnapshot, suppliersLoading] = useCollection(suppliersRef);
-  const suppliers: Supplier[] = suppliersSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() } as Supplier)) || [];
   
-  const partsRef = companyId ? query(collection(db, 'mainCompanies', companyId, 'catalog'), where => where('type', '==', 'part')) : null;
-  const [partsSnapshot, partsLoading] = useCollection(partsRef);
-  const parts: CatalogPart[] = partsSnapshot?.docs.map(doc => doc.data() as CatalogPart) || [];
+  const partsQuery = React.useMemo(() => (companyId ? query(collection(db, 'mainCompanies', companyId, 'catalog'), where('type', '==', 'part')) : undefined), [db, companyId]);
+  const [partsSnapshot, partsLoading] = useCollection(partsQuery);
+
+  const suppliers: (Supplier & {id: string})[] = React.useMemo(() => {
+    if (!suppliersSnapshot) return [];
+    return suppliersSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => ({ id: s.id, ...s.data() } as (Supplier & {id: string})));
+  }, [suppliersSnapshot]);
+
+  const parts: (CatalogPart & {id: string})[] = React.useMemo(() => {
+    if (!partsSnapshot) return [];
+    return partsSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => ({ id: s.id, ...s.data() } as (CatalogPart & {id: string})));
+  }, [partsSnapshot]);
 
   const form = useForm<POFormData>({
     resolver: zodResolver(purchaseOrderSchema),
@@ -125,12 +124,12 @@ export default function CreatePurchaseOrderPage() {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company.' });
       return;
     }
-    setIsLoading(true);
+    setIsSaving(true);
     
     const selectedSupplier = suppliers.find(s => s.id === data.supplierId);
     if (!selectedSupplier) {
         toast({ variant: 'destructive', title: 'Error', description: 'Selected supplier not found.' });
-        setIsLoading(false);
+        setIsSaving(false);
         return;
     }
 
@@ -140,15 +139,22 @@ export default function CreatePurchaseOrderPage() {
       total: grandTotal
     };
 
-    const result = await addPurchaseOrder(companyId, poDataForAction);
-    setIsLoading(false);
-    if (result.success && result.purchaseOrderId) {
-      toast({ title: 'Purchase Order Created!', description: `PO #${result.purchaseOrderId} has been saved.` });
-      router.push('/purchase-orders');
-    } else {
-      toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
+    try {
+        const result = await addPurchaseOrder(companyId, poDataForAction);
+        if (result.success && result.purchaseOrderId) {
+            toast({ title: 'Purchase Order Created!', description: `PO #${result.purchaseOrderId} has been saved.` });
+            router.push('/purchase-orders');
+        } else {
+            throw new Error(result.error);
+        }
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
+    } finally {
+        setIsSaving(false);
     }
   };
+
+  const isLoading = !companyId || suppliersLoading || partsLoading;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
@@ -161,8 +167,8 @@ export default function CreatePurchaseOrderPage() {
               </Button>
               <h1 className="text-3xl font-bold tracking-tight font-headline">Create Purchase Order</h1>
             </div>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isSaving || !companyId}>
+              {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save Purchase Order
             </Button>
           </div>

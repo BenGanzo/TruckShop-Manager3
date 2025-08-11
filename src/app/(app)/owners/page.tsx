@@ -21,32 +21,33 @@ import { Pencil, PlusCircle, Users } from 'lucide-react';
 import Link from 'next/link';
 import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore, query } from 'firebase/firestore';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, app } from '@/lib/firebase';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidbrionesmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-      return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
+import type { Owner } from '@/lib/types';
 
 export default function OwnersPage() {
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
 
-  const ownersCollectionRef = companyId ? collection(db, 'mainCompanies', companyId, 'owners') : null;
+  const ownersCollectionRef = useMemo(
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'owners') : undefined),
+    [db, companyId]
+  );
+  
   const [ownersSnapshot, loading, error] = useCollection(ownersCollectionRef);
 
-  const owners = ownersSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
+  const owners: (Owner & { id: string })[] = useMemo(() => {
+    if (!ownersSnapshot) return [];
+    return ownersSnapshot.docs.map((s: QueryDocumentSnapshot<DocumentData>) => {
+      const data = s.data() as Owner;
+      return { id: s.id, ...data };
+    });
+  }, [ownersSnapshot]);
+  
+  const isLoading = !companyId || loading;
 
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
@@ -86,7 +87,7 @@ export default function OwnersPage() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {loading || userLoading ? (
+                  {isLoading ? (
                     Array.from({ length: 3 }).map((_, i) => (
                       <TableRow key={`sklton-${i}`}>
                         <TableCell><Skeleton className="h-5 w-32" /></TableCell>
@@ -109,7 +110,7 @@ export default function OwnersPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    owners.map((owner: any) => (
+                    owners.map((owner) => (
                       <TableRow key={owner.id}>
                         <TableCell className="font-medium">{owner.ownerName}</TableCell>
                         <TableCell>{`${owner.contactFirstName || ''} ${owner.contactLastName || ''}`.trim() || 'N/A'}</TableCell>
