@@ -76,8 +76,9 @@ export default function TrucksPage() {
   const trucksCollectionRef = companyId ? collection(db, 'mainCompanies', companyId, 'trucks') : null;
   const [trucksSnapshot, loading, error] = useCollection(trucksCollectionRef);
   
-  const ownersCollectionRef = companyId ? collection(db, 'mainCompanies', companyId, 'owners') : null;
-  const [ownersSnapshot, ownersLoading] = useCollection(ownersCollectionRef);
+  // Código modificado para evitar el error
+const ownersCollectionRef = null; // No intentar leer owners
+const [ownersSnapshot, ownersLoading] = [null, false, null]; // Desactiva la lectura por completo
 
   const [selectedTrucks, setSelectedTrucks] = useState<Set<string>>(new Set());
   const [selectedOwner, setSelectedOwner] = useState<string>('');
