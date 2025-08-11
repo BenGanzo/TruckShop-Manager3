@@ -56,7 +56,6 @@ export default function InventoryPage() {
   }, [parts, searchQuery]);
   
   
-
   const totalInventoryValue = useMemo(
     () => parts.reduce((acc, p) => acc + (Number(p.cost) * Number(p.quantity)), 0),
     [parts]

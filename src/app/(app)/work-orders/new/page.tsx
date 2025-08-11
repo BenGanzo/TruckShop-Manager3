@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -26,13 +25,12 @@ import {
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { ArrowLeft, CalendarIcon, Lock, Loader2, Check, ChevronsUpDown } from 'lucide-react';
+import { ArrowLeft, CalendarIcon, Loader2, Check, ChevronsUpDown } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -47,24 +45,12 @@ import WorkOrderForm from '@/components/work-order-form';
 import WorkOrderPartsLaborForm from '@/components/work-order-parts-labor-form';
 import { useRouter } from 'next/navigation';
 import { addWorkOrder } from '@/app/actions';
-import { useAuthState } from 'react-firebase-hooks/auth';
 import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, getFirestore, query } from 'firebase/firestore';
-import { auth, app } from '@/lib/firebase';
+import { collection, getFirestore, query, where } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
 import type { WorkOrder, CatalogPart, CatalogLabor } from '@/lib/types';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
 
 const partItemSchema = z.object({
   id: z.string(),
@@ -102,19 +88,18 @@ type WorkOrderFormData = z.infer<typeof workOrderSchema>;
 export default function CreateWorkOrderPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isSaving, setIsSaving] = React.useState(false);
 
-  const [user, userLoading] = useAuthState(auth);
-  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
   
-  const trucksCollectionRef = companyId ? collection(db, 'mainCompanies', companyId, 'trucks') : null;
+  const trucksCollectionRef = React.useMemo(() => (companyId ? collection(db, 'mainCompanies', companyId, 'trucks') : undefined), [db, companyId]);
   const [trucksSnapshot, trucksLoading] = useCollection(trucksCollectionRef);
 
-  const mechanicsCollectionRef = companyId ? query(collection(db, 'mainCompanies', companyId, 'users'), where => where('role', '==', 'mechanic')) : null;
-  const [mechanicsSnapshot, mechanicsLoading] = useCollection(mechanicsCollectionRef);
+  const mechanicsQuery = React.useMemo(() => (companyId ? query(collection(db, 'mainCompanies', companyId, 'users'), where('role', 'in', ['Admin', 'Mechanic'])) : undefined), [db, companyId]);
+  const [mechanicsSnapshot, mechanicsLoading] = useCollection(mechanicsQuery);
   
-  const catalogRef = companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null;
+  const catalogRef = React.useMemo(() => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : undefined), [db, companyId]);
   const [catalogSnapshot, catalogLoading] = useCollection(catalogRef);
 
   const trucks = trucksSnapshot?.docs.map(doc => ({ id: doc.id, ...doc.data() })) || [];
@@ -150,10 +135,10 @@ export default function CreateWorkOrderPage() {
   const watchedTaxRate = form.watch('taxRate');
 
   const { partsTotal, laborTotal, taxAmount, grandTotal } = React.useMemo(() => {
-    const partsTotal = watchedParts.reduce((sum, item) => sum + item.quantity * item.cost, 0);
-    const laborTotal = watchedLabor.reduce((sum, item) => sum + item.hours * item.rate, 0);
-    const taxablePartsTotal = watchedParts.filter(p => p.isTaxable).reduce((sum, item) => sum + item.quantity * item.cost, 0);
-    const taxAmount = taxablePartsTotal * (watchedTaxRate / 100);
+    const partsTotal = watchedParts.reduce((sum, item) => sum + Number(item.quantity) * Number(item.cost), 0);
+    const laborTotal = watchedLabor.reduce((sum, item) => sum + Number(item.hours) * Number(item.rate), 0);
+    const taxablePartsTotal = watchedParts.filter(p => p.isTaxable).reduce((sum, item) => sum + Number(item.quantity) * Number(item.cost), 0);
+    const taxAmount = taxablePartsTotal * (Number(watchedTaxRate) / 100);
     const grandTotal = partsTotal + laborTotal + taxAmount;
     return { partsTotal, laborTotal, taxAmount, grandTotal };
   }, [watchedParts, watchedLabor, watchedTaxRate]);
@@ -164,34 +149,41 @@ export default function CreateWorkOrderPage() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Could not identify your company.',
+        description: 'Could not identify your company. Please wait and try again.',
       });
       return;
     }
-    setIsLoading(true);
+    setIsSaving(true);
 
     const fullData = {
       ...data,
       total: grandTotal,
     };
 
-    const result = await addWorkOrder(companyId, fullData);
-    
-    setIsLoading(false);
-    if (result.success && result.workOrderId) {
-        toast({
-            title: 'Work Order Created!',
-            description: `Work Order ${result.workOrderId} has been created successfully.`
-        });
-        router.push(`/work-orders/${result.workOrderId}`);
-    } else {
-        toast({
+    try {
+      const result = await addWorkOrder(companyId, fullData);
+      
+      if (result.success && result.workOrderId) {
+          toast({
+              title: 'Work Order Created!',
+              description: `Work Order ${result.workOrderId} has been created successfully.`
+          });
+          router.push(`/work-orders/${result.workOrderId}`);
+      } else {
+          throw new Error(result.error || 'An unknown error occurred.');
+      }
+    } catch (error: any) {
+       toast({
             variant: 'destructive',
             title: 'Creation Failed',
-            description: result.error || 'An unknown error occurred.',
+            description: error.message,
         });
+    } finally {
+      setIsSaving(false);
     }
   };
+
+  const isDataLoading = !companyId || trucksLoading || mechanicsLoading || catalogLoading;
 
   return (
     <Form {...form}>
@@ -209,8 +201,8 @@ export default function CreateWorkOrderPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Work Order'}
+            <Button type="submit" disabled={isSaving || !companyId}>
+              {isSaving ? 'Saving...' : 'Save Work Order'}
             </Button>
           </div>
         </div>
@@ -539,8 +531,8 @@ export default function CreateWorkOrderPage() {
                       </div>
                   </CardContent>
                   <CardContent className="flex flex-col gap-2">
-                      <Button size="lg" className="w-full" type="submit" disabled={isLoading}>
-                           {isLoading ? (
+                      <Button size="lg" className="w-full" type="submit" disabled={isSaving || !companyId}>
+                           {isSaving ? (
                                 <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Saving...
