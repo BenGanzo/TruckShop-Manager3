@@ -8,9 +8,9 @@ import { getFirestore as getAdminFirestore, FieldValue } from 'firebase-admin/fi
 // Function to get admin services lazily and ensure singleton pattern
 function getAdminServices() {
     if (admin.apps.length === 0) {
-        // Lee las 3 piezas por separado desde Netlify
         const projectId = process.env.FIREBASE_PROJECT_ID;
         const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+        // Obtenemos la llave privada desde las variables de entorno
         const privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
         if (!projectId || !clientEmail || !privateKey) {
@@ -21,7 +21,8 @@ function getAdminServices() {
             credential: admin.credential.cert({
                 projectId,
                 clientEmail,
-                // Esto arregla el formato de la llave para que Firebase la entienda
+                // Corrección definitiva: Nos aseguramos que la llave privada
+                // tenga el formato exacto que Firebase espera.
                 privateKey: privateKey.replace(/\\n/g, '\n'),
             }),
         });
