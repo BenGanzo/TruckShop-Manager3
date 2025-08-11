@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -8,7 +9,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { useCompanyId } from '@/hooks/useCompanyId';
-import { addCatalogPart } from '@/app/actions'; // Assuming addCatalogLabor will be added
+import { addCatalogPart, addCatalogLabor } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -24,7 +25,6 @@ import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
-import { addCatalogLabor } from '@/app/actions';
 
 const partSchema = z.object({
   name: z.string().min(1, 'Part Name is required.'),
@@ -62,16 +62,18 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
   const isPart = type === 'part';
 
   const catalogRef = useMemo(
-    () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null),
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : undefined),
     [db, companyId]
   );
 
   const [catalogSnapshot, catalogLoading] = useCollection(catalogRef);
-  const allParts =
-    useMemo(() => catalogSnapshot?.docs
-      .filter(doc => doc.data().type === 'part')
-      .map(doc => ({ id: doc.id, ...doc.data() })) ?? [],
-    [catalogSnapshot]);
+  
+  const allParts = useMemo(() => {
+    if (!catalogSnapshot) return [];
+    return catalogSnapshot.docs
+      .filter((s: QueryDocumentSnapshot<DocumentData>) => s.data().type === 'part')
+      .map((s: QueryDocumentSnapshot<DocumentData>) => ({ id: s.id, ...s.data() }));
+  }, [catalogSnapshot]);
 
   const partForm = useForm<z.infer<typeof partSchema>>({
     resolver: zodResolver(partSchema),
@@ -90,29 +92,33 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
   const onPartSubmit = async (data: z.infer<typeof partSchema>) => {
     if (!companyId) return;
     setIsSaving(true);
-    const res = await addCatalogPart(companyId, data);
-    if (res.success) {
+    try {
+      const res = await addCatalogPart(companyId, data);
+      if (!res.success) throw new Error(res.error || 'Unknown error');
       toast({ title: 'Part Added!', description: 'The new part has been saved to the catalog.' });
       setIsOpen(false);
       partForm.reset();
-    } else {
-      toast({ variant: 'destructive', title: 'Error', description: res.error });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to add part.' });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const onLaborSubmit = async (data: z.infer<typeof laborSchema>) => {
     if (!companyId) return;
     setIsSaving(true);
-    const res = await addCatalogLabor(companyId, data);
-    if (res.success) {
+    try {
+      const res = await addCatalogLabor(companyId, data);
+      if (!res.success) throw new Error(res.error || 'Unknown error');
       toast({ title: 'Service Added!', description: 'The new service has been saved to the catalog.' });
       setIsOpen(false);
       laborForm.reset();
-    } else {
-      toast({ variant: 'destructive', title: 'Error', description: res.error });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to add service.' });
+    } finally {
+      setIsSaving(false);
     }
-    setIsSaving(false);
   };
 
   const form = isPart ? partForm : laborForm;
@@ -150,35 +156,35 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                 <FormField control={form.control} name="name" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Part Name</FormLabel>
-                    <FormControl><Input placeholder="e.g., Oil Filter" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., Oil Filter" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="partId" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Part ID / SKU</FormLabel>
-                    <FormControl><Input placeholder="e.g., FIL-001" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., FIL-001" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="quantity" render={({ field }) => (
                   <FormItem>
                     <FormLabel>On Hand</FormLabel>
-                    <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
+                    <FormControl><Input type="number" placeholder="0" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="cost" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Cost</FormLabel>
-                    <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl>
+                    <FormControl><Input type="number" placeholder="0.00" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={partForm.control} name="isTaxable" render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5"><FormLabel>Taxable?</FormLabel></div>
-                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSaving} /></FormControl>
                   </FormItem>
                 )} />
               </>
@@ -187,28 +193,28 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                 <FormField control={laborForm.control} name="description" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Description</FormLabel>
-                    <FormControl><Input placeholder="e.g., Standard Oil Change" {...field} /></FormControl>
+                    <FormControl><Input placeholder="e.g., Standard Oil Change" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={laborForm.control} name="defaultHours" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Default Hours</FormLabel>
-                    <FormControl><Input type="number" placeholder="0.0" {...field} /></FormControl>
+                    <FormControl><Input type="number" placeholder="0.0" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={laborForm.control} name="defaultRate" render={({ field }) => (
                   <FormItem>
                     <FormLabel>Default Rate</FormLabel>
-                    <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl>
+                    <FormControl><Input type="number" placeholder="0.00" {...field} disabled={isSaving} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={laborForm.control} name="hasPmRule" render={({ field }) => (
                   <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5"><FormLabel>Has PM Rule?</FormLabel></div>
-                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} disabled={isSaving} /></FormControl>
                   </FormItem>
                 )} />
 
@@ -217,14 +223,14 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                     <FormField control={laborForm.control} name="pmIntervalMiles" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Interval (Miles)</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g., 20000" {...field} /></FormControl>
+                        <FormControl><Input type="number" placeholder="e.g., 20000" {...field} disabled={isSaving} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
                     <FormField control={laborForm.control} name="pmIntervalDays" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Interval (Days)</FormLabel>
-                        <FormControl><Input type="number" placeholder="e.g., 90" {...field} /></FormControl>
+                        <FormControl><Input type="number" placeholder="e.g., 90" {...field} disabled={isSaving} /></FormControl>
                         <FormMessage />
                       </FormItem>
                     )} />
@@ -236,7 +242,7 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                 <div className="grid grid-cols-6 gap-2 items-end">
                   <div className="col-span-4">
                     <Label>Part</Label>
-                    <Select onValueChange={setKitPart} value={kitPart} disabled={catalogLoading || !companyId}>
+                    <Select onValueChange={setKitPart} value={kitPart} disabled={catalogLoading || !companyId || isSaving}>
                       <SelectTrigger><SelectValue placeholder={catalogLoading ? 'Loading...' : 'Select a part'} /></SelectTrigger>
                       <SelectContent>
                         {allParts.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>)}
@@ -245,10 +251,10 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                   </div>
                   <div className="col-span-1">
                     <Label>Qty</Label>
-                    <Input type="number" value={kitQty} onChange={(e) => setKitQty(parseInt(e.target.value || '0', 10))} />
+                    <Input type="number" value={kitQty} onChange={(e) => setKitQty(parseInt(e.target.value || '0', 10))} disabled={isSaving} />
                   </div>
                   <div>
-                    <Button type="button" size="icon" variant="outline" className="w-full" onClick={handleAddPartToKit}>
+                    <Button type="button" size="icon" variant="outline" className="w-full" onClick={handleAddPartToKit} disabled={isSaving}>
                       <PlusCircle className="h-4 w-4" />
                     </Button>
                   </div>
@@ -274,7 +280,7 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
                             <TableCell>{allParts.find((p: any) => p.id === field.partId)?.name || field.partId}</TableCell>
                             <TableCell>{field.quantity}</TableCell>
                             <TableCell>
-                              <Button type="button" size="icon" variant="ghost" onClick={() => remove(index)}>
+                              <Button type="button" size="icon" variant="ghost" onClick={() => remove(index)} disabled={isSaving}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </TableCell>
