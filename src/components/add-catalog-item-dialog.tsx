@@ -1,16 +1,20 @@
-
 'use client';
+
+import { useMemo, useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useCollection } from 'react-firebase-hooks/firestore';
+import { collection, getFirestore } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
+import { useCompanyId } from '@/hooks/useCompanyId';
+import { addCatalogPart, addCatalogLabor } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+  DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,18 +23,7 @@ import { PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { useState, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
-import { useToast } from '@/hooks/use-toast';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from '@/lib/firebase';
-import { addCatalogPart, addCatalogLabor } from '@/app/actions';
-import { useCollection } from 'react-firebase-hooks/firestore';
-import { collection, getFirestore } from 'firebase/firestore';
-import { app } from '@/lib/firebase';
 
 const partSchema = z.object({
   name: z.string().min(1, 'Part Name is required.'),
@@ -57,28 +50,28 @@ interface AddCatalogItemDialogProps {
   type: 'part' | 'labor';
 }
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-    if (!email) return '';
-    if (ADMIN_EMAILS.includes(email)) return 'angulo-transportation';
-    const domain = email.split('@')[1];
-    return domain ? domain.split('.')[0] : '';
-};
-
 export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
-  const [user] = useAuthState(auth);
-  const { toast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const companyId = useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
-  
-  const isPart = type === 'part';
-  
   const db = getFirestore(app);
-  const catalogRef = companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null;
+  const companyId = useCompanyId();                // ← ahora viene de custom claims
+  const { toast } = useToast();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isPart = type === 'part';
+
+  // No construyas refs si aún no hay companyId
+  const catalogRef = useMemo(
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null),
+    [db, companyId]
+  );
+
   const [catalogSnapshot, catalogLoading] = useCollection(catalogRef);
-  const allParts = useMemo(() => catalogSnapshot?.docs.filter(doc => doc.data().type === 'part').map(doc => ({ id: doc.id, ...doc.data() })) || [], [catalogSnapshot]);
+  const allParts =
+    useMemo(() => catalogSnapshot?.docs
+      .filter(doc => doc.data().type === 'part')
+      .map(doc => ({ id: doc.id, ...doc.data() })) ?? [],
+    [catalogSnapshot]);
 
   const partForm = useForm<z.infer<typeof partSchema>>({
     resolver: zodResolver(partSchema),
@@ -90,40 +83,36 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
     defaultValues: { description: '', defaultHours: 0, defaultRate: 0, hasPmRule: false, kit: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: laborForm.control,
-    name: 'kit',
-  });
-  
+  const { fields, append, remove } = useFieldArray({ control: laborForm.control, name: 'kit' });
   const [kitPart, setKitPart] = useState('');
   const [kitQty, setKitQty] = useState(1);
 
   const onPartSubmit = async (data: z.infer<typeof partSchema>) => {
     if (!companyId) return;
-    setIsLoading(true);
-    const result = await addCatalogPart(companyId, data);
-    if (result.success) {
+    setIsSaving(true);
+    const res = await addCatalogPart(companyId, data);
+    if (res.success) {
       toast({ title: 'Part Added!', description: 'The new part has been saved to the catalog.' });
       setIsOpen(false);
       partForm.reset();
     } else {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
+      toast({ variant: 'destructive', title: 'Error', description: res.error });
     }
-    setIsLoading(false);
+    setIsSaving(false);
   };
 
   const onLaborSubmit = async (data: z.infer<typeof laborSchema>) => {
     if (!companyId) return;
-    setIsLoading(true);
-    const result = await addCatalogLabor(companyId, data);
-    if (result.success) {
+    setIsSaving(true);
+    const res = await addCatalogLabor(companyId, data);
+    if (res.success) {
       toast({ title: 'Service Added!', description: 'The new service has been saved to the catalog.' });
       setIsOpen(false);
       laborForm.reset();
     } else {
-      toast({ variant: 'destructive', title: 'Error', description: result.error });
+      toast({ variant: 'destructive', title: 'Error', description: res.error });
     }
-    setIsLoading(false);
+    setIsSaving(false);
   };
 
   const form = isPart ? partForm : laborForm;
@@ -143,7 +132,7 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button disabled={!companyId}>
           <PlusCircle className="mr-2 h-4 w-4" />
           {buttonText}
         </Button>
@@ -153,70 +142,156 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+
         <Form {...form}>
           <form onSubmit={onSubmit} className="grid gap-4 py-4">
             {isPart ? (
               <>
-                <FormField control={form.control} name="name" render={({ field }) => ( <FormItem> <FormLabel>Part Name</FormLabel> <FormControl><Input placeholder="e.g., Oil Filter" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="partId" render={({ field }) => ( <FormItem> <FormLabel>Part ID / SKU</FormLabel> <FormControl><Input placeholder="e.g., FIL-001" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem> <FormLabel>On Hand</FormLabel> <FormControl><Input type="number" placeholder="0" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={form.control} name="cost" render={({ field }) => ( <FormItem> <FormLabel>Cost</FormLabel> <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                 <FormField control={partForm.control} name="isTaxable" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"> <div className="space-y-0.5"> <FormLabel>Taxable?</FormLabel> </div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )} />
+                <FormField control={form.control} name="name" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Part Name</FormLabel>
+                    <FormControl><Input placeholder="e.g., Oil Filter" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="partId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Part ID / SKU</FormLabel>
+                    <FormControl><Input placeholder="e.g., FIL-001" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="quantity" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>On Hand</FormLabel>
+                    <FormControl><Input type="number" placeholder="0" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="cost" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost</FormLabel>
+                    <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={partForm.control} name="isTaxable" render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5"><FormLabel>Taxable?</FormLabel></div>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                  </FormItem>
+                )} />
               </>
             ) : (
               <>
-                <FormField control={laborForm.control} name="description" render={({ field }) => ( <FormItem> <FormLabel>Description</FormLabel> <FormControl><Input placeholder="e.g., Standard Oil Change" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={laborForm.control} name="defaultHours" render={({ field }) => ( <FormItem> <FormLabel>Default Hours</FormLabel> <FormControl><Input type="number" placeholder="0.0" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={laborForm.control} name="defaultRate" render={({ field }) => ( <FormItem> <FormLabel>Default Rate</FormLabel> <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                <FormField control={laborForm.control} name="hasPmRule" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3"> <div className="space-y-0.5"> <FormLabel>Has PM Rule?</FormLabel> </div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )} />
-                
+                <FormField control={laborForm.control} name="description" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl><Input placeholder="e.g., Standard Oil Change" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={laborForm.control} name="defaultHours" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default Hours</FormLabel>
+                    <FormControl><Input type="number" placeholder="0.0" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={laborForm.control} name="defaultRate" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Default Rate</FormLabel>
+                    <FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={laborForm.control} name="hasPmRule" render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5"><FormLabel>Has PM Rule?</FormLabel></div>
+                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                  </FormItem>
+                )} />
+
                 {laborForm.watch('hasPmRule') && (
                   <div className="space-y-4 rounded-md border p-4">
-                    <FormField control={laborForm.control} name="pmIntervalMiles" render={({ field }) => ( <FormItem> <FormLabel>Interval (Miles)</FormLabel> <FormControl><Input type="number" placeholder="e.g., 20000" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
-                    <FormField control={laborForm.control} name="pmIntervalDays" render={({ field }) => ( <FormItem> <FormLabel>Interval (Days)</FormLabel> <FormControl><Input type="number" placeholder="e.g., 90" {...field} /></FormControl> <FormMessage /> </FormItem> )} />
+                    <FormField control={laborForm.control} name="pmIntervalMiles" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interval (Miles)</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g., 20000" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={laborForm.control} name="pmIntervalDays" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Interval (Days)</FormLabel>
+                        <FormControl><Input type="number" placeholder="e.g., 90" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                   </div>
                 )}
-                
+
                 <Separator className="my-4" />
                 <h4 className="font-medium text-center">Part Kit (Optional)</h4>
                 <div className="grid grid-cols-6 gap-2 items-end">
-                    <div className="col-span-4">
-                        <Label>Part</Label>
-                         <Select onValueChange={setKitPart} value={kitPart} disabled={catalogLoading}>
-                            <SelectTrigger><SelectValue placeholder={catalogLoading ? "Loading..." : "Select a part"} /></SelectTrigger>
-                            <SelectContent>
-                                {allParts.map(p => <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="col-span-1">
-                        <Label>Qty</Label>
-                        <Input type="number" value={kitQty} onChange={(e) => setKitQty(parseInt(e.target.value))} />
-                    </div>
-                    <div><Button type="button" size="icon" variant="outline" className="w-full" onClick={handleAddPartToKit}><PlusCircle className="h-4 w-4" /></Button></div>
+                  <div className="col-span-4">
+                    <Label>Part</Label>
+                    <Select onValueChange={setKitPart} value={kitPart} disabled={catalogLoading || !companyId}>
+                      <SelectTrigger><SelectValue placeholder={catalogLoading ? 'Loading...' : 'Select a part'} /></SelectTrigger>
+                      <SelectContent>
+                        {allParts.map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name} ({p.id})</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-1">
+                    <Label>Qty</Label>
+                    <Input type="number" value={kitQty} onChange={(e) => setKitQty(parseInt(e.target.value || '0', 10))} />
+                  </div>
+                  <div>
+                    <Button type="button" size="icon" variant="outline" className="w-full" onClick={handleAddPartToKit}>
+                      <PlusCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                 <div className="rounded-md border mt-2">
-                    <Table><TableHeader><TableRow><TableHead>Part Name</TableHead><TableHead className="w-16">Qty</TableHead><TableHead className="w-12 p-0"></TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {fields.length === 0 ? (
-                                <TableRow><TableCell colSpan={3} className="h-16 text-center text-muted-foreground">No parts in kit.</TableCell></TableRow>
-                            ) : (
-                                fields.map((field, index) => (
-                                    <TableRow key={field.id}>
-                                        <TableCell>{allParts.find(p => p.id === field.partId)?.name || field.partId}</TableCell>
-                                        <TableCell>{field.quantity}</TableCell>
-                                        <TableCell><Button type="button" size="icon" variant="ghost" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
-                                    </TableRow>
-                                ))
-                            )}
-                        </TableBody>
-                    </Table>
+
+                <div className="rounded-md border mt-2">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Part Name</TableHead>
+                        <TableHead className="w-16">Qty</TableHead>
+                        <TableHead className="w-12 p-0"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="h-16 text-center text-muted-foreground">No parts in kit.</TableCell>
+                        </TableRow>
+                      ) : (
+                        fields.map((field, index) => (
+                          <TableRow key={field.id}>
+                            <TableCell>{allParts.find((p: any) => p.id === field.partId)?.name || field.partId}</TableCell>
+                            <TableCell>{field.quantity}</TableCell>
+                            <TableCell>
+                              <Button type="button" size="icon" variant="ghost" onClick={() => remove(index)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </>
             )}
+
             <DialogFooter>
-                <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
-                <Button type="submit" disabled={isLoading}>{isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : 'Save'}</Button>
+              <DialogClose asChild><Button type="button" variant="secondary">Cancel</Button></DialogClose>
+              <Button type="submit" disabled={isSaving || !companyId}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
