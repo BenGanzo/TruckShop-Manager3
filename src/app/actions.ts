@@ -31,7 +31,6 @@ function getAdminServices() {
     return { adminDb, adminAuth };
 }
 
-
 export async function getPartRecommendations(input: any) {
     // Placeholder for actual AI call
     console.log('Getting recommendations for:', input.problemDescription);
@@ -47,7 +46,6 @@ export async function getPartRecommendations(input: any) {
         return { success: false, error: 'Failed to get AI recommendations.' };
     }
 }
-
 
 export async function importAssets(companyId: string, assets: Asset[]): Promise<{ success: number, errors: number }> {
   if (!companyId) {
@@ -247,7 +245,6 @@ export async function assignTrailersToOwner(companyId: string, trailerIds: strin
     }
 }
 
-
 export async function addOwner(companyId: string, ownerData: Omit<Owner, 'id'>): Promise<{ success: boolean; error?: string; }> {
     if (!companyId) {
         return { success: false, error: 'Company ID is required.' };
@@ -297,7 +294,6 @@ export async function updateOwner(companyId: string, ownerId: string, ownerData:
     }
 }
 
-// Function to get the next Work Order ID
 async function getNextWorkOrderId(companyId: string): Promise<string> {
     const { adminDb } = getAdminServices();
     const workOrdersRef = adminDb.collection('mainCompanies').doc(companyId).collection('workOrders');
@@ -313,7 +309,6 @@ async function getNextWorkOrderId(companyId: string): Promise<string> {
     const nextId = lastId + 1;
     return `WO-${nextId}`;
 }
-
 
 export async function addWorkOrder(companyId: string, workOrderData: Omit<WorkOrder, 'id' | 'numericId'>): Promise<{ success: boolean; error?: string; workOrderId?: string; }> {
     if (!companyId) {
@@ -361,7 +356,6 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
         const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
         const partDocRef = catalogRef.doc(partData.partId);
 
-        // --- SOLUCIÓN: Forzar la conversión de cada tipo de dato ---
         const dataToSet = {
             type: 'part',
             name: String(partData.name || ''),
@@ -379,7 +373,6 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
 
     } catch (e: any) {
         console.error('Error adding catalog part:', e);
-        // Devolvemos un error seguro
         return { success: false, error: 'An unexpected error occurred while saving to the database.' };
     }
 }
@@ -490,4 +483,26 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     }
     return { success: false, error: errorMessage };
   }
+}
+
+// --- ESTA ES LA NUEVA FUNCIÓN QUE NECESITAMOS, AL FINAL DEL ARCHIVO ---
+export async function setInitialAdminClaims() {
+    'use server';
+    try {
+        const { adminAuth } = getAdminServices();
+        const userEmail = "ganzobenjamin1301@gmail.com";
+        const companyId = "angulo-transportation"; // Asegúrate que este sea el ID de tu documento
+        const user = await adminAuth.getUserByEmail(userEmail);
+
+        // Esto le asigna el rol de "Admin" y la afiliación de la compañía a tu usuario
+        await adminAuth.setCustomUserClaims(user.uid, {
+            role: 'Admin',
+            companyId: companyId
+        });
+
+        return { success: true, message: `Permisos de Admin asignados a ${userEmail}` };
+
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
 }

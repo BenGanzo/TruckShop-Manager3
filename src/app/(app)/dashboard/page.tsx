@@ -7,6 +7,7 @@ import { useAuthState } from 'react-firebase-hooks/auth';
 import { collection, getFirestore, query, where } from 'firebase/firestore';
 import { app, auth } from '@/lib/firebase';
 import type { CatalogPart, Truck, WorkOrder } from '@/lib/types';
+import { setInitialAdminClaims } from '@/app/actions';
 
 import {
   Card,
@@ -98,6 +99,22 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold tracking-tight font-headline">
         Dashboard
       </h1>
+      {/* --- CÓDIGO DEL BOTÓN --- */}
+<button
+  onClick={async () => {
+    alert("Intentando asignar tus permisos de administrador...");
+    const result = await setInitialAdminClaims(); // Llama a la herramienta que acabamos de añadir
+    if (result.success) {
+      alert("¡Éxito! Tus permisos han sido asignados. Por favor, CIERRA SESIÓN Y VUELVE A INICIAR SESIÓN inmediatamente.");
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  }}
+  className="bg-red-500 text-white p-2 rounded-md my-4"
+>
+  Asignar Mis Permisos de Admin (USAR UNA SOLA VEZ)
+</button>
+{/* ------------------------- */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard 
             title="Total Revenue"
