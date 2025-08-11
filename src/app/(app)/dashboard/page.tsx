@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo } from 'react';
@@ -6,7 +7,6 @@ import { collection, getFirestore, query, where } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import type { CatalogPart, Truck, WorkOrder } from '@/lib/types';
 import { useCompanyId } from '@/hooks/useCompanyId';
-import AssignMyClaimsButton from './AssignMyClaimsButton';
 
 import {
   Card, CardContent, CardHeader, CardTitle,
@@ -43,7 +43,7 @@ const StatCard = ({
 
 export default function DashboardPage() {
   const db = getFirestore(app);
-  const companyId = useCompanyId();                 // ← ahora viene de custom claims
+  const companyId = useCompanyId();
   const DEFAULT_TAX_RATE = 8.25 / 100;
 
   // Evita crear refs/queries si aún no hay companyId
@@ -97,9 +97,6 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
       <h1 className="text-3xl font-bold tracking-tight font-headline">Dashboard</h1>
-
-      {/* Botón para bootstrap de claims (muestra mientras no haya companyId resuelto) */}
-      {!companyId && <AssignMyClaimsButton />}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatCard title="Total Revenue" value="$45,231.89" subtext="+20.1% from last month" icon={DollarSign} isLoading={isLoading} />

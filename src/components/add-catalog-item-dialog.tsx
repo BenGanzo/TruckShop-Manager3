@@ -8,7 +8,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { useCompanyId } from '@/hooks/useCompanyId';
-import { addCatalogPart, addCatalogLabor } from '@/app/actions';
+import { addCatalogPart } from '@/app/actions'; // Assuming addCatalogLabor will be added
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import { Separator } from './ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from './ui/form';
+import { addCatalogLabor } from '@/app/actions';
 
 const partSchema = z.object({
   name: z.string().min(1, 'Part Name is required.'),
@@ -52,7 +53,7 @@ interface AddCatalogItemDialogProps {
 
 export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
   const db = getFirestore(app);
-  const companyId = useCompanyId();                // ← ahora viene de custom claims
+  const companyId = useCompanyId();
   const { toast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
@@ -60,7 +61,6 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
 
   const isPart = type === 'part';
 
-  // No construyas refs si aún no hay companyId
   const catalogRef = useMemo(
     () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null),
     [db, companyId]
