@@ -34,8 +34,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, app } from '@/lib/firebase';
 import { updateTrailer } from '@/app/actions';
 import {
   Form,
@@ -45,21 +43,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { doc, getDoc, getFirestore, Timestamp } from 'firebase/firestore';
+import { doc, getFirestore, Timestamp } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
 import type { Trailer } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
+import { useDocumentData } from 'react-firebase-hooks/firestore';
 
 const trailerFormSchema = z.object({
   id: z.string().min(1, 'Trailer ID is required.'),
@@ -83,13 +72,18 @@ export default function EditTrailerPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const [user] = useAuthState(auth);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [isFetching, setIsFetching] = React.useState(true);
 
   const trailerId = params.id as string;
-  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
+
+  const trailerDocRef = React.useMemo(
+    () => (companyId && trailerId ? doc(db, 'mainCompanies', companyId, 'trailers', trailerId) : undefined),
+    [db, companyId, trailerId]
+  );
+  
+  const [trailerData, isFetching] = useDocumentData(trailerDocRef);
 
   const form = useForm<TrailerFormData>({
     resolver: zodResolver(trailerFormSchema),
@@ -97,35 +91,27 @@ export default function EditTrailerPage() {
   });
 
   React.useEffect(() => {
-    if (!trailerId || !companyId) return;
-
-    const fetchTrailerData = async () => {
-      setIsFetching(true);
-      const trailerDocRef = doc(db, 'mainCompanies', companyId, 'trailers', trailerId);
-      const trailerDocSnap = await getDoc(trailerDocRef);
-
-      if (trailerDocSnap.exists()) {
-        const data = trailerDocSnap.data() as Trailer;
+    if (trailerData) {
         const formData = {
-          ...data,
-          purchasedOn: data.purchasedOn instanceof Timestamp ? data.purchasedOn.toDate() : undefined,
-          tagExpireOn: data.tagExpireOn instanceof Timestamp ? data.tagExpireOn.toDate() : undefined,
-          inspectionDueOn: data.inspectionDueOn instanceof Timestamp ? data.inspectionDueOn.toDate() : undefined,
+          ...trailerData,
+          purchasedOn: trailerData.purchasedOn instanceof Timestamp ? trailerData.purchasedOn.toDate() : undefined,
+          tagExpireOn: trailerData.tagExpireOn instanceof Timestamp ? trailerData.tagExpireOn.toDate() : undefined,
+          inspectionDueOn: trailerData.inspectionDueOn instanceof Timestamp ? trailerData.inspectionDueOn.toDate() : undefined,
         };
-        form.reset(formData);
-      } else {
+        form.reset(formData as TrailerFormData);
+    }
+  }, [trailerData, form]);
+
+  React.useEffect(() => {
+    if (!isFetching && !trailerData && companyId) {
         toast({
-          variant: 'destructive',
-          title: 'Not Found',
-          description: 'Trailer could not be found.',
+            variant: 'destructive',
+            title: 'Not Found',
+            description: 'Trailer could not be found.',
         });
         router.push('/trailers');
-      }
-      setIsFetching(false);
-    };
-
-    fetchTrailerData();
-  }, [trailerId, companyId, db, form, router, toast]);
+    }
+  }, [isFetching, trailerData, companyId, router, toast]);
 
   const onSubmit = async (data: TrailerFormData) => {
     if (!companyId || !trailerId) {
@@ -148,7 +134,7 @@ export default function EditTrailerPage() {
     }
   };
 
-  if (isFetching) {
+  if (!companyId || isFetching) {
     return (
         <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
             <div className="flex items-center justify-between">
@@ -182,7 +168,7 @@ export default function EditTrailerPage() {
               Edit Trailer
             </h1>
           </div>
-          <Button type="submit" disabled={isLoading}>
+          <Button type="submit" disabled={isLoading || !companyId}>
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             {isLoading ? 'Saving...' : 'Save Trailer'}
           </Button>

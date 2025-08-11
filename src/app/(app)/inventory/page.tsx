@@ -22,17 +22,16 @@ import { Boxes, Search } from 'lucide-react';
 
 export default function InventoryPage() {
   const db = getFirestore(app);
-  const companyId = useCompanyId();              // ← usa claims (permanente)
+  const companyId = useCompanyId();
   const [searchQuery, setSearchQuery] = useState('');
 
-  // No armes refs si companyId aún no está resuelto
   const catalogRef = useMemo(
-    () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : null),
+    () => (companyId ? collection(db, 'mainCompanies', companyId, 'catalog') : undefined),
     [db, companyId]
   );
 
   const partsQuery = useMemo(
-    () => (catalogRef ? query(catalogRef, where('type', '==', 'part')) : null),
+    () => (catalogRef ? query(catalogRef, where('type', '==', 'part')) : undefined),
     [catalogRef]
   );
 

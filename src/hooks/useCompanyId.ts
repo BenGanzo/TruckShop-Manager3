@@ -12,10 +12,9 @@ export function useCompanyId() {
         setCompanyId(null); 
         return; 
       }
-      // It's not strictly necessary to force refresh here on every change,
-      // as onIdTokenChanged fires when it does change.
-      // But for ensuring claims are fresh after login, it can be useful.
-      const res = await user.getIdTokenResult(true); 
+      // Force refresh of the token to get the latest claims
+      await user.getIdToken(true);
+      const res = await user.getIdTokenResult();
       setCompanyId((res.claims as any)?.companyId ?? null);
     });
     // Cleanup subscription on unmount

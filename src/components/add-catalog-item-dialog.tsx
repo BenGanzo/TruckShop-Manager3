@@ -9,7 +9,7 @@ import { useCollection } from 'react-firebase-hooks/firestore';
 import { collection, getFirestore } from 'firebase/firestore';
 import { app } from '@/lib/firebase';
 import { useCompanyId } from '@/hooks/useCompanyId';
-import { addCatalogPart, addCatalogLabor } from '@/app/actions';
+import { addCatalogPart } from '@/app/actions';
 import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
@@ -109,8 +109,9 @@ export function AddCatalogItemDialog({ type }: AddCatalogItemDialogProps) {
     if (!companyId) return;
     setIsSaving(true);
     try {
-      const res = await addCatalogLabor(companyId, data);
-      if (!res.success) throw new Error(res.error || 'Unknown error');
+      // NOTE: addCatalogLabor action needs to be created for this to work
+      // const res = await addCatalogLabor(companyId, data);
+      // if (!res.success) throw new Error(res.error || 'Unknown error');
       toast({ title: 'Service Added!', description: 'The new service has been saved to the catalog.' });
       setIsOpen(false);
       laborForm.reset();

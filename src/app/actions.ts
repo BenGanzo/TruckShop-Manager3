@@ -8,23 +8,15 @@ import { getFirestore as getAdminFirestore, FieldValue } from 'firebase-admin/fi
 // Function to get admin services lazily and ensure singleton pattern
 function getAdminServices() {
     if (admin.apps.length === 0) {
-        const projectId = process.env.FIREBASE_PROJECT_ID;
-        const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-        // Obtenemos la llave privada desde las variables de entorno
-        const privateKey = process.env.FIREBASE_PRIVATE_KEY;
-
-        if (!projectId || !clientEmail || !privateKey) {
-            throw new Error('Firebase admin environment variables are not set.');
+        const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+        if (!serviceAccount) {
+            throw new Error('FIREBASE_SERVICE_ACCOUNT environment variable is not set.');
         }
+        // Replace escaped newlines before parsing
+        const parsedServiceAccount = JSON.parse(serviceAccount.replace(/\\n/g, '\n'));
 
         admin.initializeApp({
-            credential: admin.credential.cert({
-                projectId,
-                clientEmail,
-                // Corrección definitiva: Nos aseguramos que la llave privada
-                // tenga el formato exacto que Firebase espera.
-                privateKey: privateKey.replace(/\\n/g, '\n'),
-            }),
+            credential: admin.credential.cert(parsedServiceAccount),
         });
     }
     const adminDb = getAdminFirestore();
@@ -378,6 +370,40 @@ export async function addCatalogPart(companyId: string, partData: any): Promise<
     }
 }
 
+export async function addCatalogLabor(companyId: string, laborData: any): Promise<{ success: boolean; error?: string }> {
+    if (!companyId) {
+        return { success: false, error: 'Company ID is required.' };
+    }
+
+    try {
+        const { adminDb } = getAdminServices();
+        const catalogRef = adminDb.collection('mainCompanies').doc(companyId).collection('catalog');
+        const newDocRef = catalogRef.doc(); // Firestore will generate an ID
+
+        const dataToSet = {
+            id: newDocRef.id,
+            type: 'labor',
+            description: String(laborData.description || ''),
+            defaultHours: Number(laborData.defaultHours || 0),
+            defaultRate: Number(laborData.defaultRate || 0),
+            hasPmRule: Boolean(laborData.hasPmRule || false),
+            pmIntervalMiles: Number(laborData.pmIntervalMiles || 0),
+            pmIntervalDays: Number(laborData.pmIntervalDays || 0),
+            kit: laborData.kit || [],
+            createdAt: FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
+        };
+
+        await newDocRef.set(dataToSet);
+        
+        return { success: true };
+
+    } catch (e: any) {
+        console.error('Error adding catalog labor:', e);
+        return { success: false, error: 'An unexpected error occurred while saving to the database.' };
+    }
+}
+
 export async function addSupplier(companyId: string, supplierData: Omit<Supplier, 'id' | 'createdAt'>): Promise<{ success: boolean; error?: string; supplierId?: string }> {
     if (!companyId) {
         return { success: false, error: 'Company ID is required.' };
@@ -454,8 +480,17 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
       password: userData.password,
       displayName: `${userData.firstName} ${userData.lastName}`,
     });
+    
+    // 2. Set custom claims for the new user
+    await adminAuth.setCustomUserClaims(userRecord.uid, {
+        companyId: companyId,
+        role: userData.role,
+        isActive: true,
+        email: userData.email,
+    });
 
-    // 2. Create user document in Firestore subcollection
+
+    // 3. Create user document in Firestore subcollection
     const userDocRef = adminDb.collection('mainCompanies').doc(companyId).collection('users').doc(userRecord.uid);
     
     const dataToSet: Omit<User, 'createdAt' | 'updatedAt'> = {
@@ -484,26 +519,4 @@ export async function addUser(companyId: string, userData: any): Promise<{ succe
     }
     return { success: false, error: errorMessage };
   }
-}
-
-// --- ESTA ES LA NUEVA FUNCIÓN QUE NECESITAMOS, AL FINAL DEL ARCHIVO ---
-export async function setInitialAdminClaims() {
-    'use server';
-    try {
-        const { adminAuth } = getAdminServices();
-        const userEmail = "ganzobenjamin1301@gmail.com";
-        const companyId = "angulo-transportation"; // Asegúrate que este sea el ID de tu documento
-        const user = await adminAuth.getUserByEmail(userEmail);
-
-        // Esto le asigna el rol de "Admin" y la afiliación de la compañía a tu usuario
-        await adminAuth.setCustomUserClaims(user.uid, {
-            role: 'Admin',
-            companyId: companyId
-        });
-
-        return { success: true, message: `Permisos de Admin asignados a ${userEmail}` };
-
-    } catch (error: any) {
-        return { success: false, error: error.message };
-    }
 }

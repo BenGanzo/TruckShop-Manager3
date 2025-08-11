@@ -29,13 +29,11 @@ import { ArrowLeft, CalendarIcon, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { useParams, useRouter } from 'next/navigation';
-import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth, app } from '@/lib/firebase';
 import { updateTruck } from '@/app/actions';
 import {
   Form,
@@ -45,21 +43,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { doc, getDoc, getFirestore, Timestamp } from 'firebase/firestore';
+import { doc, getFirestore, Timestamp } from 'firebase/firestore';
+import { app } from '@/lib/firebase';
 import type { Truck } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
-
-// Helper function to derive companyId from email
-const getCompanyIdFromEmail = (email: string | null | undefined) => {
-  if (!email) return '';
-  if (ADMIN_EMAILS.includes(email)) {
-    return 'angulo-transportation';
-  }
-  const domain = email.split('@')[1];
-  return domain ? domain.split('.')[0] : '';
-};
+import { useCompanyId } from '@/hooks/useCompanyId';
+import { useDocumentData } from 'react-firebase-hooks/firestore';
 
 const truckFormSchema = z.object({
   id: z.string().min(1, 'Truck ID is required.'),
@@ -115,13 +104,18 @@ export default function EditTruckPage() {
   const router = useRouter();
   const params = useParams();
   const { toast } = useToast();
-  const [user] = useAuthState(auth);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [isFetching, setIsFetching] = React.useState(true);
+  const [isSaving, setIsSaving] = React.useState(false);
 
   const truckId = params.id as string;
-  const companyId = React.useMemo(() => getCompanyIdFromEmail(user?.email), [user?.email]);
+  const companyId = useCompanyId();
   const db = getFirestore(app);
+
+  const truckDocRef = React.useMemo(
+    () => (companyId && truckId ? doc(db, 'mainCompanies', companyId, 'trucks', truckId) : undefined),
+    [db, companyId, truckId]
+  );
+  
+  const [truckData, isFetching] = useDocumentData(truckDocRef);
 
   const form = useForm<TruckFormData>({
     resolver: zodResolver(truckFormSchema),
@@ -129,43 +123,34 @@ export default function EditTruckPage() {
   });
 
   React.useEffect(() => {
-    if (!truckId || !companyId) return;
-
-    const fetchTruckData = async () => {
-      setIsFetching(true);
-      const truckDocRef = doc(db, 'mainCompanies', companyId, 'trucks', truckId);
-      const truckDocSnap = await getDoc(truckDocRef);
-
-      if (truckDocSnap.exists()) {
-        const data = truckDocSnap.data() as Truck;
-        // Convert Firestore Timestamps to JS Dates
+    if (truckData) {
         const formData = {
-          ...data,
-          inServiceOn: data.inServiceOn instanceof Timestamp ? data.inServiceOn.toDate() : undefined,
-          tagExpireOn: data.tagExpireOn instanceof Timestamp ? data.tagExpireOn.toDate() : undefined,
-          inspectionDueOn: data.inspectionDueOn instanceof Timestamp ? data.inspectionDueOn.toDate() : undefined,
+          ...truckData,
+          inServiceOn: truckData.inServiceOn instanceof Timestamp ? truckData.inServiceOn.toDate() : undefined,
+          tagExpireOn: truckData.tagExpireOn instanceof Timestamp ? truckData.tagExpireOn.toDate() : undefined,
+          inspectionDueOn: truckData.inspectionDueOn instanceof Timestamp ? truckData.inspectionDueOn.toDate() : undefined,
         };
-        form.reset(formData);
-      } else {
+        form.reset(formData as TruckFormData);
+    }
+  }, [truckData, form]);
+
+  React.useEffect(() => {
+    if (!isFetching && !truckData && companyId) {
         toast({
-          variant: 'destructive',
-          title: 'Not Found',
-          description: 'Truck could not be found.',
+            variant: 'destructive',
+            title: 'Not Found',
+            description: 'Truck could not be found.',
         });
         router.push('/trucks');
-      }
-      setIsFetching(false);
-    };
-
-    fetchTruckData();
-  }, [truckId, companyId, db, form, router, toast]);
+    }
+  }, [isFetching, truckData, companyId, router, toast]);
 
   const onSubmit = async (data: TruckFormData) => {
     if (!companyId || !truckId) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not identify your company or the truck.' });
       return;
     }
-    setIsLoading(true);
+    setIsSaving(true);
     try {
       const result = await updateTruck(companyId, truckId, data);
       if (result.success) {
@@ -177,11 +162,11 @@ export default function EditTruckPage() {
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'Save Failed', description: error.message || 'An unknown error occurred.' });
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
   
-  if (isFetching) {
+  if (!companyId || isFetching) {
     return (
         <div className="flex-1 space-y-4 p-4 pt-6 md:p-8">
             <div className="flex items-center justify-between">
@@ -215,9 +200,9 @@ export default function EditTruckPage() {
               Edit Truck
             </h1>
           </div>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {isLoading ? 'Saving...' : 'Save Truck'}
+          <Button type="submit" disabled={isSaving || !companyId}>
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSaving ? 'Saving...' : 'Save Truck'}
           </Button>
         </div>
 
