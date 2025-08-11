@@ -53,7 +53,7 @@ import { assignTrucksToOwner } from '@/app/actions';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidbrionesmg@gmail.com'];
 
 // Helper function to derive companyId from email
 const getCompanyIdFromEmail = (email: string | null | undefined) => {

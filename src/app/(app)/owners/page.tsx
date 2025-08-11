@@ -26,7 +26,7 @@ import { auth, app } from '@/lib/firebase';
 import { useMemo } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidbrionesmg@gmail.com'];
 
 // Helper function to derive companyId from email
 const getCompanyIdFromEmail = (email: string | null | undefined) => {

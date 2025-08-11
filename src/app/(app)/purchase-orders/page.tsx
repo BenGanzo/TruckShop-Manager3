@@ -17,7 +17,7 @@ import { PlusCircle, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidtariosmg@gmail.com'];
+const ADMIN_EMAILS = ['ganzobenjamin1301@gmail.com', 'davidbrionesmg@gmail.com'];
 
 const getCompanyIdFromEmail = (email: string | null | undefined) => {
   if (!email) return '';
