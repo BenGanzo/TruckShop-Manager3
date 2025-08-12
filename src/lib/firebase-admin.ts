@@ -1,31 +1,34 @@
 // src/lib/firebase-admin.ts
 import 'server-only';
-import admin from 'firebase-admin';
+import { initializeApp, getApps, getApp, applicationDefault, cert, App } from 'firebase-admin/app';
 
-if (!admin.apps.length) {
-  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+/**
+ * Devuelve una instancia de Admin App **siempre inicializada**.
+ * Soporta 3 modos de credenciales:
+ *  - FIREBASE_SERVICE_ACCOUNT: JSON completo (con \n escapados)
+ *  - Vars separadas: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY
+ *  - ADC: applicationDefault() (Cloud Run / Workstations)
+ */
+export function getAdminApp(): App {
+  if (getApps().length) return getApp();
 
-  if (serviceAccount) {
-    // Modo 1: JSON completo en FIREBASE_SERVICE_ACCOUNT
-    admin.initializeApp({
-      credential: admin.credential.cert(
-        JSON.parse(serviceAccount.replace(/\\n/g, '\n'))
-      ),
+  const svc = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (svc) {
+    return initializeApp({
+      credential: cert(JSON.parse(svc.replace(/\\n/g, '\n'))),
     });
-  } else if (process.env.FIREBASE_PROJECT_ID) {
-    // Modo 2: Vars separadas
-    admin.initializeApp({
-      credential: admin.credential.cert({
+  }
+
+  if (process.env.FIREBASE_PROJECT_ID) {
+    return initializeApp({
+      credential: cert({
         projectId: process.env.FIREBASE_PROJECT_ID!,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-        // ¡Importante! Reemplazar \n literales por saltos reales
         privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
       }),
     });
-  } else {
-    // Modo 3: ADC (p.ej. Cloud Run / Workstations con credenciales ya presentes)
-    admin.initializeApp();
   }
-}
 
-export { admin };
+  // Fallback: ADC (si hay credenciales en el entorno)
+  return initializeApp({ credential: applicationDefault() });
+}

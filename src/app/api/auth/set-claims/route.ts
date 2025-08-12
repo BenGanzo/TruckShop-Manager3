@@ -1,9 +1,10 @@
 // src/app/api/auth/set-claims/route.ts
 import { NextResponse } from 'next/server';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { admin } from '@/lib/firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { getAdminApp } from '@/lib/firebase-admin';
 
-export const dynamic = 'force-dynamic'; // evita caché en dev/studio
+export const runtime = 'nodejs';          // Fuerza runtime Node (Admin SDK)
+export const dynamic = 'force-dynamic';   // Evita caching en Studio/dev
 
 export async function POST(req: Request) {
   try {
@@ -18,19 +19,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'companyId and role are required' }, { status: 400 });
     }
 
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
-    await getAdminAuth().setCustomUserClaims(decoded.uid, {
-      companyId,
-      role,
-      isActive: true,
-    });
+    // ✅ Garantiza que el Admin App esté inicializado
+    const adminApp = getAdminApp();
+
+    // ✅ Usa el auth ligado al app explícito (no depende del "default")
+    const adminAuth = getAuth(adminApp);
+
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    await adminAuth.setCustomUserClaims(decoded.uid, { companyId, role, isActive: true });
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
     console.error('Error setting claims:', e);
-    return NextResponse.json(
-      { error: e?.message || 'Internal error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
   }
 }
