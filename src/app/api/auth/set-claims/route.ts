@@ -1,44 +1,33 @@
-// src/app/api/auth/set-claims/route.ts
-import { NextResponse, NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { admin } from '@/lib/firebase-admin';
-
-export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
-    const authHeader = req.headers.get('authorization') || '';
-    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!idToken) {
-      return NextResponse.json({ error: 'Missing token' }, { status: 401 });
-    }
-
-    // Extract companyId and role from query parameters
     const { searchParams } = new URL(req.url);
     const companyId = searchParams.get('companyId');
     const role = searchParams.get('role');
 
     if (!companyId || !role) {
-      return NextResponse.json({ error: 'Missing companyId or role query parameter' }, { status: 400 });
+      return new NextResponse('Missing companyId or role', { status: 400 });
     }
 
-    const decodedToken = await admin.auth().verifyIdToken(idToken);
-    const uid = decodedToken.uid;
+    const authHeader = req.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return new NextResponse('Missing Authorization header', { status: 401 });
+    }
 
-    // Set custom claims
-    await admin.auth().setCustomUserClaims(uid, {
-      companyId: companyId,
-      role: role,
-      isActive: true, // Assuming the user should be active
+    const decoded = await admin.auth().verifyIdToken(token);
+
+    await admin.auth().setCustomUserClaims(decoded.uid, {
+      companyId,
+      role,
+      isActive: true, // Default to active when setting claims
     });
 
-    return NextResponse.json({ ok: true, message: `Claims set for ${uid}: companyId=${companyId}, role=${role}` });
-
+    return NextResponse.json({ ok: true, uid: decoded.uid, companyId, role });
   } catch (e: any) {
-    console.error('Error setting claims:', e);
-    return NextResponse.json({ error: e?.message || 'Unknown error' }, { status: 500 });
+    console.error('set-claims failed:', e);
+    return new NextResponse(JSON.stringify({ ok: false, error: e?.message || 'Internal error' }), { status: 500 });
   }
-}
-
-export async function GET() {
-  return NextResponse.json({ ok: true, message: 'API endpoint is active.' });
 }
