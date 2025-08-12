@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { auth } from '@/lib/firebase';
+// 👇 Usa ruta relativa para garantizar que el helper se importe en Firebase Studio
+import { auth, app } from '../../../lib/firebase';
 
 const DEFAULT_COMPANY_ID = 'angulo-transportation';
 const DEFAULT_ROLE = 'Admin';
@@ -13,6 +14,9 @@ export default function SetClaimsDebugPage() {
   const assignClaims = async () => {
     try {
       setStatus('working'); setMessage('Asignando claims…');
+
+      // Verificación: debe imprimir "[DEFAULT]"
+      console.log('apps ok? app.name =', app.name);
 
       const u = auth.currentUser;
       if (!u) { setStatus('error'); setMessage('No hay usuario autenticado'); return; }
@@ -30,7 +34,7 @@ export default function SetClaimsDebugPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
-      await u.getIdToken(true); // fuerza refresh para traer los claims
+      await u.getIdToken(true); // traer claims recién puestos
       setStatus('done');
       setMessage('OK. Claims asignados. Recarga la app o cierra sesión y entra de nuevo.');
     } catch (e: any) {
@@ -40,13 +44,13 @@ export default function SetClaimsDebugPage() {
   };
 
   return (
-    <main style={{ padding: 24, maxWidth: 800 }}>
+    <main style={{ padding: 24 }}>
       <h1>Grant claims (temporal)</h1>
       <p>Esta página asigna <code>companyId</code> y <code>role</code> al usuario logueado.</p>
 
       <p><strong>Asignarme</strong> <code>companyId=angulo-transportation</code>, <code>role=Admin</code></p>
 
-      <button onClick={assignClaims} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #ccc' }}>
+      <button onClick={assignClaims} style={{ padding: '8px 14px', border: '1px solid #ccc', borderRadius: 8 }}>
         Asignarme…
       </button>
 
@@ -54,8 +58,6 @@ export default function SetClaimsDebugPage() {
         <div>estado: <strong>{status}</strong></div>
         <div>{message}</div>
       </div>
-
-      <p style={{ marginTop: 24 }}>Luego recarga la app o cierra sesión y vuelve a entrar.</p>
     </main>
   );
 }
