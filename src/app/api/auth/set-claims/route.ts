@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { getAuth as getAdminAuth } from 'firebase-admin/auth';
 import { admin } from '@/lib/firebase-admin';
 
+export const dynamic = 'force-dynamic'; // evita caché en dev/studio
+
 export async function POST(req: Request) {
   try {
     const authHeader = req.headers.get('Authorization') || '';
@@ -17,7 +19,11 @@ export async function POST(req: Request) {
     }
 
     const decoded = await getAdminAuth().verifyIdToken(idToken);
-    await getAdminAuth().setCustomUserClaims(decoded.uid, { companyId, role, isActive: true });
+    await getAdminAuth().setCustomUserClaims(decoded.uid, {
+      companyId,
+      role,
+      isActive: true,
+    });
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {

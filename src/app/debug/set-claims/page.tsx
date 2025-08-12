@@ -20,7 +20,7 @@ export default function SetClaimsDebugPage() {
       const u = auth.currentUser;
       if (!u) { setStatus('error'); setMessage('No hay usuario autenticado'); return; }
 
-      const token = await u.getIdToken(); // sin refresh
+      const token = await u.getIdToken(); // sin refresh, luego refrescamos
       const res = await fetch('/api/auth/set-claims', {
         method: 'POST',
         headers: {
@@ -32,10 +32,10 @@ export default function SetClaimsDebugPage() {
 
       const text = await res.text();
       let data: any = {};
-      try { data = JSON.parse(text); } catch {} // tolerante
+      try { data = JSON.parse(text); } catch {}
       if (!res.ok) throw new Error(data?.error || text || `HTTP ${res.status}`);
 
-      await u.getIdToken(true); // refrescar claims
+      await u.getIdToken(true); // refresca para traer los claims
       setStatus('done');
       setMessage('OK. Claims asignados. Recarga la app o cierra sesión y vuelve a entrar.');
     } catch (e: any) {
