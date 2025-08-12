@@ -3,8 +3,7 @@ import { NextResponse } from 'next/server';
 import { getAuth } from 'firebase-admin/auth';
 import { getAdminApp } from '@/lib/firebase-admin';
 
-export const runtime = 'nodejs';          // Fuerza runtime Node (Admin SDK)
-export const dynamic = 'force-dynamic';   // Evita caching en Studio/dev
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -19,12 +18,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'companyId and role are required' }, { status: 400 });
     }
 
-    // ✅ Garantiza que el Admin App esté inicializado
-    const adminApp = getAdminApp();
-
-    // ✅ Usa el auth ligado al app explícito (no depende del "default")
-    const adminAuth = getAuth(adminApp);
-
+    const adminAuth = getAuth(getAdminApp());
     const decoded = await adminAuth.verifyIdToken(idToken);
     await adminAuth.setCustomUserClaims(decoded.uid, { companyId, role, isActive: true });
 
