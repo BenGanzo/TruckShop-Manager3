@@ -1,8 +1,8 @@
+// src/app/debug/set-claims/page.tsx
 'use client';
 
 import { useState } from 'react';
-import { getApps } from 'firebase/app';
-import { app, auth } from '../../../lib/firebase'; // <-- AJUSTA la ruta si es necesario
+import { auth, app } from '@/lib/firebase';
 
 const DEFAULT_COMPANY_ID = 'angulo-transportation';
 const DEFAULT_ROLE = 'Admin';
@@ -15,8 +15,7 @@ export default function SetClaimsDebugPage() {
     try {
       setStatus('working'); setMessage('Asignando claims…');
 
-      console.log('app.name =', app.name);         // debe ser "[DEFAULT]"
-      console.log('getApps().length =', getApps().length); // debe ser 1
+      console.log('apps ok? app.name =', app.name); // debe imprimir "[DEFAULT]"
 
       const u = auth.currentUser;
       if (!u) { setStatus('error'); setMessage('No hay usuario autenticado'); return; }
@@ -24,16 +23,21 @@ export default function SetClaimsDebugPage() {
       const token = await u.getIdToken(); // sin refresh
       const res = await fetch('/api/auth/set-claims', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID, role: DEFAULT_ROLE }),
       });
 
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch {} // tolerante
+      if (!res.ok) throw new Error(data?.error || text || `HTTP ${res.status}`);
 
-      await u.getIdToken(true); // refresca para traer claims
+      await u.getIdToken(true); // refrescar claims
       setStatus('done');
-      setMessage('OK. Claims asignados. Recarga la app o cierra sesión y entra de nuevo.');
+      setMessage('OK. Claims asignados. Recarga la app o cierra sesión y vuelve a entrar.');
     } catch (e: any) {
       setStatus('error');
       setMessage(e?.message || 'Error asignando claims');
@@ -44,10 +48,13 @@ export default function SetClaimsDebugPage() {
     <main style={{ padding: 24 }}>
       <h1>Grant claims (temporal)</h1>
       <p>Asigna <code>companyId</code> y <code>role</code> al usuario logueado.</p>
+
       <p><strong>Asignarme</strong> <code>companyId=angulo-transportation</code>, <code>role=Admin</code></p>
+
       <button onClick={assignClaims} style={{ padding: '8px 14px', border: '1px solid #ccc', borderRadius: 8 }}>
         Asignarme…
       </button>
+
       <div style={{ marginTop: 16, fontFamily: 'monospace' }}>
         <div>estado: <strong>{status}</strong></div>
         <div>{message}</div>
