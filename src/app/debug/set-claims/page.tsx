@@ -4,82 +4,67 @@ import { useState } from 'react';
 import { getAuth } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 
-export default function SetClaimsDebugPage() {
-  const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [outputText, setOutputText] = useState('');
-  const companyId = 'angulo-transportation';
-  const role = 'Admin';
+const DEFAULT_COMPANY_ID = 'angulo-transportation';
+const DEFAULT_ROLE = 'Admin';
 
-  const assignMe = async () => {
-    setOutputText('');
+export default function SetClaimsDebugPage() {
+  const [status, setStatus] = useState<'idle'|'working'|'done'|'error'>('idle');
+  const [message, setMessage] = useState<string>('');
+
+  const assignClaims = async () => {
     try {
-      setStatus('loading');
+      setStatus('working'); setMessage('Asignando claims…');
       const auth = getAuth(app);
       const u = auth.currentUser;
-      if (!u) {
-        setStatus('error');
-        setOutputText('No hay usuario autenticado. Inicia sesión primero.');
-        return;
-      }
-      const token = await u.getIdToken();
+      if (!u) { setStatus('error'); setMessage('No hay usuario autenticado'); return; }
 
-      const res = await fetch(
-        `/api/auth/set-claims?companyId=${encodeURIComponent(companyId)}&role=${encodeURIComponent(role)}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const token = await u.getIdToken(); // sin refresh, para no forzar doble verificación
+      const res = await fetch('/api/auth/set-claims', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID, role: DEFAULT_ROLE }),
+      });
 
-      const resJson = await res.json();
-      setOutputText(JSON.stringify(resJson, null, 2));
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
-
-      if (!res.ok) {
-        console.error('set-claims error:', resJson);
-        setStatus('error');
-        return;
-      }
-
+      // fuerza refresh para traer los claims recién puestos
       await u.getIdToken(true);
-      setStatus('ok');
+
+      setStatus('done');
+      setMessage('OK. Claims asignados. Cierra sesión y entra de nuevo, o simplemente recarga.');
     } catch (e: any) {
-      console.error(e);
       setStatus('error');
-      setOutputText(e?.message || 'Fallo inesperado');
+      setMessage(e?.message || 'Error asignando claims');
     }
   };
 
   return (
-    <div style={{ padding: 24, fontFamily: 'sans-serif', maxWidth: 720, margin: 'auto' }}>
-      <h2>Grant claims (temporal)</h2>
-      <p>Esta página asigna un company y un role al usuario actualmente autenticado.</p>
-
+    <main style={{ padding: 24, maxWidth: 800 }}>
+      <h1>Grant claims (temporal)</h1>
+      <p>Esta página asigna <code>companyId</code> y <code>role</code> al usuario logueado.</p>
       <p>
-        <button
-          onClick={assignMe}
-          disabled={status === 'loading'}
-          style={{ padding: '8px 12px', borderRadius: 6, cursor: 'pointer', border: '1px solid #ccc', background: '#f0f0f0' }}
-        >
-          {status === 'loading' ? 'Asignando...' : `Asignarme companyId=${companyId}, role=${role}`}
-        </button>
+        <strong>Asignarme</strong> <code>companyId={DEFAULT_COMPANY_ID}</code>, <code>role={DEFAULT_ROLE}</code>
       </p>
 
-      <h3>Estado: {status}</h3>
-      
-      {outputText && (
-         <pre style={{ background: '#eee', padding: '1rem', borderRadius: '6px', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-            {outputText}
-        </pre>
-      )}
+      <button
+        onClick={assignClaims}
+        style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #ccc', cursor: 'pointer' }}
+      >
+        Asignarme…
+      </button>
 
-      {status === 'ok' && (
-         <p style={{ color: 'green', fontWeight: 'bold' }}>¡Claims asignados! Ya puedes recargar la página principal.</p>
-      )}
+      <div style={{ marginTop: 16, fontFamily: 'monospace' }}>
+        <div>estado: <strong>{status}</strong></div>
+        <div>{message}</div>
+      </div>
 
-      <p style={{marginTop: '1rem'}}>Luego recarga la página principal (dashboard) para que los cambios surtan efecto.</p>
-    </div>
+      <p style={{ marginTop: 24 }}>
+        Luego recarga la app o cierra sesión y vuelve a entrar.
+      </p>
+    </main>
   );
 }

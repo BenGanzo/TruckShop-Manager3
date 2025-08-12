@@ -1,33 +1,27 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { admin } from '@/lib/firebase-admin';
+import { NextResponse } from 'next/server';
+import { getAuth as getAdminAuth } from 'firebase-admin/auth';
+import { admin } from '@/lib/firebase-admin'; // Usa tu helper existente para inicializar admin
 
-export async function POST(req: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const companyId = searchParams.get('companyId');
-    const role = searchParams.get('role');
+    // La inicialización ocurre cuando se importa el módulo `admin`
+    const authHeader = req.headers.get('Authorization') || '';
+    const idToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!idToken) {
+      return NextResponse.json({ error: 'Missing Authorization Bearer token' }, { status: 401 });
+    }
 
+    const { companyId, role } = await req.json();
     if (!companyId || !role) {
-      return new NextResponse('Missing companyId or role', { status: 400 });
+      return NextResponse.json({ error: 'companyId and role are required' }, { status: 400 });
     }
 
-    const authHeader = req.headers.get('authorization') || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) {
-      return new NextResponse('Missing Authorization header', { status: 401 });
-    }
+    const decoded = await getAdminAuth().verifyIdToken(idToken);
+    await getAdminAuth().setCustomUserClaims(decoded.uid, { companyId, role, isActive: true });
 
-    const decoded = await admin.auth().verifyIdToken(token);
-
-    await admin.auth().setCustomUserClaims(decoded.uid, {
-      companyId,
-      role,
-      isActive: true, // Default to active when setting claims
-    });
-
-    return NextResponse.json({ ok: true, uid: decoded.uid, companyId, role });
+    return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.error('set-claims failed:', e);
-    return new NextResponse(JSON.stringify({ ok: false, error: e?.message || 'Internal error' }), { status: 500 });
+    console.error('Error setting claims:', e);
+    return NextResponse.json({ error: e?.message || 'Internal error' }, { status: 500 });
   }
 }
