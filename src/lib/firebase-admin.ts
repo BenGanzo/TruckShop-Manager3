@@ -1,15 +1,21 @@
 // src/lib/firebase-admin.ts
 import 'server-only';
-import admin from 'firebase-admin';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert({
-      projectId: process.env.FIREBASE_PROJECT_ID!,
-      clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-    }),
-  });
+let adminApp;
+
+if (!getApps().length) {
+  const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+  if (serviceAccount) {
+     adminApp = initializeApp({
+        credential: cert(JSON.parse(serviceAccount.replace(/\\n/g, '\n'))),
+     });
+  } else {
+     // Fallback for environments where ADC might be configured
+     adminApp = initializeApp();
+  }
+} else {
+  adminApp = getApp();
 }
 
-export { admin };
+export { adminApp };

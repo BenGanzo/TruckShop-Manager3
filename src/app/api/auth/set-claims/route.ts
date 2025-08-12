@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getAuth as getAdminAuth } from 'firebase-admin/auth';
-import { admin } from '@/lib/firebase-admin';
+import { getAuth } from 'firebase-admin/auth';
+import { adminApp } from '../../../../lib/firebase-admin'; // <-- relativo
 
 export const runtime = 'nodejs';
 
@@ -13,8 +13,9 @@ export async function POST(req: Request) {
     const { companyId, role } = await req.json();
     if (!companyId || !role) return NextResponse.json({ error: 'companyId and role are required' }, { status: 400 });
 
-    const decoded = await getAdminAuth().verifyIdToken(idToken);
-    await getAdminAuth().setCustomUserClaims(decoded.uid, { companyId, role, isActive: true });
+    const adminAuth = getAuth(adminApp);
+    const decoded = await adminAuth.verifyIdToken(idToken);
+    await adminAuth.setCustomUserClaims(decoded.uid, { companyId, role, isActive: true });
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {

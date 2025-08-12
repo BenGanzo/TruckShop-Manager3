@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { getApps } from 'firebase/app';
-import { app, auth } from '../../../lib/firebase'; // <-- AJUSTA ESTA RUTA RELATIVA
+import { app, auth } from '../../../lib/firebase'; // <-- AJUSTA la ruta si es necesario
 
 const DEFAULT_COMPANY_ID = 'angulo-transportation';
 const DEFAULT_ROLE = 'Admin';
@@ -15,8 +15,8 @@ export default function SetClaimsDebugPage() {
     try {
       setStatus('working'); setMessage('Asignando claims…');
 
-      console.log('apps ok? app.name =', app.name);         // Debe ser "[DEFAULT]"
-      console.log('getApps length =', getApps().length);     // Debe ser 1
+      console.log('app.name =', app.name);         // debe ser "[DEFAULT]"
+      console.log('getApps().length =', getApps().length); // debe ser 1
 
       const u = auth.currentUser;
       if (!u) { setStatus('error'); setMessage('No hay usuario autenticado'); return; }
@@ -31,7 +31,7 @@ export default function SetClaimsDebugPage() {
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
 
-      await u.getIdToken(true); // refrescar para traer claims
+      await u.getIdToken(true); // refresca para traer claims
       setStatus('done');
       setMessage('OK. Claims asignados. Recarga la app o cierra sesión y entra de nuevo.');
     } catch (e: any) {
